@@ -113,75 +113,61 @@ english-reader/
 
 ## Stages
 
-Each stage ends with a result that can be checked.
+Each stage ends with a result that can be checked. Each stage is one branch and one pull request.
 
-### Stage 0. Setup
+### Stage 0. Setup (done)
 
-- Branch `setup/skeleton`: `.gitignore`, `.nvmrc` (Node 24), `package.json` with `test` and `typecheck` scripts, `tsconfig.json` (strict), TypeScript and Vitest as dev dependencies, `netlify.toml` (publishes `web/`), a placeholder `web/index.html`.
-- Connect the repository to Netlify. Production deploys come only from `main`; work happens in branches.
-- **Done when:** the placeholder opens at `*.netlify.app`.
+- Branch `setup/skeleton`: `.gitignore`, `.gitattributes`, `.nvmrc` (Node 24), `package.json` with `test` and `typecheck` scripts, `tsconfig.json` (strict), `vitest.config.ts`, TypeScript and Vitest as dev dependencies, `netlify.toml` (publishes `web/`), a placeholder `web/index.html`.
+- The repository is connected to Netlify (legacy free plan). Production deploys come only from `main`; branch deploys are off, deploy previews are on.
+- **Done:** the placeholder opens at https://simple-english-reader.netlify.app/.
 
-### Stage 1. Processing pipeline (the core)
+### Stage 1. Voice check
+
+The riskiest part goes first: exact word highlighting with Kokoro timings.
+
+- Kokoro adapter: Python script with word timings, mp3 through ffmpeg.
+- A manually started GitHub Actions workflow voices one sample passage with every English Kokoro voice (American and British).
+- It builds a listening page: play each voice with the current word highlighted. The page is downloaded from the run page.
+- The chosen voice goes into `TTS_VOICE`. The listening page and its workflow are then removed.
+- **Done when:** the highlight matches the voice by ear, and a voice is chosen. If it does not match, the approach is changed before stage 2.
+
+### Stage 2. Working site
+
+Everything except the admin. A new text is added by starting a workflow by hand.
 
 - Data contract in `shared/`.
-- Sentence and word splitting with `Intl.Segmenter`.
-- Kokoro adapter: Python script with timings, mp3 through ffmpeg.
-- Matching Kokoro words to text words (punctuation, numbers, apostrophes).
-- OpenRouter adapter with answer checks and a fallback model.
-- Locally, `npm run process -- sample.txt` does everything except voice: splitting, translation, `out/<id>.json`. The full run with Kokoro is a manually started GitHub Actions workflow; JSON and mp3 are downloaded from the run page. Kokoro does not run locally.
+- Sentence and word splitting with `Intl.Segmenter`; matching Kokoro words to text words (punctuation, numbers, apostrophes).
+- OpenRouter adapter with answer checks and a fallback model; both free models compared on the same 3 texts.
 - Contract tests for both adapters.
-- Voice selection (temporary): a workflow voices one passage with every English Kokoro voice (American and British) and builds a listening page, downloadable from the run page. The chosen voice goes into `TTS_VOICE`; the script and the page are then removed. A voice picker in the form only if more than one voice is wanted.
-- **Done when:** on 3 real texts, including the longest one, a manual workflow run produces JSON and mp3, tests pass, and the processing time is measured.
-
-### Stage 2. Pages on local data
-
-- Home page: the list of texts.
-- Text page: whole text with word highlight, one sentence, a word on click (a slice of the full recording with 30–50 ms padding), sentence translation on a button.
-- Playback through the Web Audio API so slices play exactly.
+- Workflow `process-text`: takes a text, voices and translates it, writes JSON and mp3 with a status to Netlify Blobs. On failure: status `error` with a clear message. Package and model cache.
+- Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id`.
+- Home page: the list of texts. Text page: whole text with word highlight, one sentence, a word on click (a slice of the full recording with 30–50 ms padding), sentence translation on a button. Playback through the Web Audio API.
 - Simple, clean design, checked on phone and desktop.
-- **Done when:** the highlight matches the voice by ear, and all modes work on a phone.
+- **Done when:** 3 real texts, including the longest one, are added through the workflow and work on the site on a phone; tests pass; processing time is measured.
 
-### Stage 3. Storage and the site on Netlify
-
-- Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id`, all reading from Netlify Blobs.
-- A script that uploads stage 1 results to Blobs.
-- **Done when:** the site at `*.netlify.app` shows those texts from storage.
-
-### Stage 4. Processing in GitHub Actions
-
-- Workflow `process-text` with an `id` input.
-- Steps: Node, Python, ffmpeg; package and model cache; read the text from Blobs; run the stage 1 pipeline; write the result and the status.
-- On failure: status `error` with a clear message.
-- **Done when:** a text put into Blobs by hand becomes ready on the site after a manual workflow run; the run time is measured.
-
-### Stage 5. Admin
+### Stage 3. Admin and launch
 
 - Netlify Identity: invite-only registration.
 - `/admin`: login, the "Title, Text, Create" form, the list of texts with status.
 - `POST /api/texts`: checks the login, saves the text with status `processing`, starts the workflow through the GitHub API.
 - A "Retry" button for status `error`.
 - Delete: `DELETE /api/texts/:id` removes the JSON and the mp3; confirmation in the admin page.
-- Edit: a new title is saved at once; a changed text is saved and processed again, because voice and translation depend on it.
-- **Done when:** from a phone, the admin logs in, pastes a text, and the page is ready a few minutes later.
-
-### Stage 6. Reliability and launch
-
+- Edit: a new title is saved at once; a changed text is saved and processed again.
+- Text length limit in the form, based on measurements.
 - Check the fallback translation model by turning off the main one.
-- Limit the text length in the form, based on measurements.
-- After a week, check Netlify credit use and free OpenRouter requests.
 - README: where the settings are and how to plug in a new service.
-- **Done when:** a week of normal use passes with no manual fixes.
+- **Done when:** from a phone, the admin logs in, pastes a text, and the page is ready a few minutes later; then a week of normal use passes with no manual fixes.
 
 ## Open questions
 
-- **Translation model:** in stage 1, compare both free models on the same 3 texts. Free OpenRouter models are sometimes removed without notice.
+- **Translation model:** in stage 2, compare both free models on the same 3 texts. Free OpenRouter models are sometimes removed without notice.
 - **Repository visibility:** public for now.
 
 Deferred: a separate "dictionary" voice for single words (a new `TtsProvider` method); DeepL as a fallback translator (one more `Translator` adapter).
 
 ## Facts and limits
 
-- **Netlify:** accounts created after 2025-09-04 use credits: 300 free credits a month, a hard limit; a production deploy costs 15 credits, bandwidth 20 credits per GB, requests 2 per 10,000. When credits run out, sites pause until next month. Branch previews are free. Accounts created earlier stay on the legacy free plan; check which plan the account is on and do not switch to credits without a reason.
+- **Netlify:** accounts created after 2025-09-04 use credits: 300 free credits a month, a hard limit; a production deploy costs 15 credits, bandwidth 20 credits per GB, requests 2 per 10,000. When credits run out, sites pause until next month. Branch previews are free. Accounts created earlier stay on the legacy free plan; check which plan the account is on and do not switch to credits without a reason. This project's account is on the legacy free plan (100 GB bandwidth and 300 build minutes a month, hard limits), so credits do not apply.
 - **Netlify Identity:** announced as deprecated in February 2025, now listed in the docs as a normal feature of all plans. Git Gateway is deprecated (not needed here).
 - **OpenRouter:** free models allow 20 requests a minute and 50 a day (1,000 a day after buying $10+ of credits). Each free model has a single host, with no fallback inside OpenRouter. Some free hosts may keep or train on prompts; texts here are not private.
 - **GitHub Actions:** standard runners are free for public repositories.

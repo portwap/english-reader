@@ -1,0 +1,2 @@
+# Line endings: always LF, on every OS, so scripts run the same on Windows and Linux runners.
+* text=auto eol=lf

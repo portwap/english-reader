@@ -1,0 +1,8 @@
+# Files git must not track: installed packages, build and pipeline output, local secrets.
+node_modules/
+dist/
+out/
+.netlify/
+.env
+.env.*
+*.log

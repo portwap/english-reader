@@ -1,0 +1,18 @@
+{
+  "name": "english-reader",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A small site for learning English by reading and listening.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

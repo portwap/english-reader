@@ -1,0 +1,4 @@
+# Netlify build settings: the site is plain files in web/, so there is no build step yet.
+
+[build]
+  publish = "web"

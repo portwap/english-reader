@@ -1,6 +1,6 @@
 # Python packages for kokoro_tts.py, the only Python in the project.
 # Every package is pinned, including dependencies of dependencies: a newer typer once dropped click
-# and broke spaCy. The set was resolved from releases before 2025-08-01, which match kokoro 0.9.4.
+# and broke spaCy. The set was resolved for Linux from releases before 2025-08-01, which match kokoro 0.9.4.
 # Install with: pip install --no-deps -r requirements.txt && pip check (pip check confirms the set is complete).
 
 # CPU build of torch: the CUDA build is over 2 GB and runners have no GPU.
@@ -20,6 +20,7 @@ certifi==2025.7.14
 charset-normalizer==3.4.2
 click==8.2.1
 cloudpathlib==0.21.1
+colorama==0.4.6
 confection==0.1.5
 csvw==3.5.1
 curated-tokenizers==0.0.9
@@ -30,6 +31,7 @@ docopt==0.6.2
 espeakng-loader==0.2.4
 filelock==3.18.0
 fsspec==2025.7.0
+hf-xet==1.1.5
 huggingface-hub==0.34.3
 idna==3.10
 isodate==0.7.2

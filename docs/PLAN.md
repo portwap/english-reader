@@ -61,12 +61,15 @@ interface TtsProvider {
   id: string; // 'kokoro'
   synthesize(text: string, voice: string): Promise<{
     mp3: Buffer;
+    duration: number; // seconds; word timings must fit inside it
     words: { text: string; start: number; end: number }[];
   }>;
 }
 ```
 
 Kokoro adapter: TypeScript calls a small Python script (the `kokoro` library, word timings taken from it in the standard way); ffmpeg converts WAV to mp3. That script is the only Python in the project.
+
+Voices: `af_heart`, `af_sky`, `am_adam`, `am_eric`, `am_liam` (default). The list lives in `pipeline/tts/voices.ts`; to allow another Kokoro voice, add it there.
 
 ### Translation
 
@@ -81,7 +84,7 @@ OpenRouter adapter: one request per text (the whole text plus numbered sentences
 
 ### Settings (GitHub Actions variables)
 
-- `TTS_PROVIDER=kokoro`, `TTS_VOICE=<voice>`
+- `TTS_PROVIDER=kokoro`; `TTS_VOICE` is optional: one of the allowed voices, `am_liam` when not set. Change it in GitHub: Settings → Secrets and variables → Actions → Variables.
 - `TRANSLATOR=openrouter`, `TRANSLATION_MODELS=google/gemma-4-31b-it:free,qwen/qwen3.8-27b:free`
 
 Secrets: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, `OPENROUTER_API_KEY`. They are entered only in GitHub and Netlify settings, never in the repository.
@@ -101,7 +104,7 @@ english-reader/
   shared/              data contract (TextDoc type)
   pipeline/            text processing (Node + TypeScript)
     core/              sentences and words, JSON assembly, checks
-    tts/               TtsProvider + kokoro.ts
+    tts/               TtsProvider, kokoro.ts, voices.ts (allowed voices)
     translate/         Translator + openrouter.ts
     python/            kokoro_tts.py, the only Python
     tests/             adapter contract tests
@@ -121,15 +124,15 @@ Each stage ends with a result that can be checked. Each stage is one branch and 
 - The repository is connected to Netlify (legacy free plan). Production deploys come only from `main`; branch deploys are off, deploy previews are on.
 - **Done:** the placeholder opens at https://simple-english-reader.netlify.app/.
 
-### Stage 1. Voice check
+### Stage 1. Voice check (done)
 
 The riskiest part goes first: exact word highlighting with Kokoro timings.
 
-- Kokoro adapter: Python script with word timings, mp3 through ffmpeg.
-- A manually started GitHub Actions workflow voices one sample passage with every English Kokoro voice (American and British).
-- It builds a listening page: play each voice with the current word highlighted. The page is downloaded from the run page.
-- The chosen voice goes into `TTS_VOICE`. The listening page and its workflow are then removed.
-- **Done when:** the highlight matches the voice by ear, and a voice is chosen. If it does not match, the approach is changed before stage 2.
+- Kokoro adapter: Python script with word timings, mp3 through ffmpeg. Python packages are all pinned (see `pipeline/python/requirements.txt`).
+- A temporary workflow voiced one sample passage (107 words) with all 28 English Kokoro voices and built a listening page with word highlight. It was then removed.
+- Result: all 28 voices worked with no timing problems; about 25 s of processing per 35 s of audio on a standard runner.
+- Chosen voices: `af_heart`, `af_sky`, `am_adam`, `am_eric`, `am_liam`; default `am_liam`.
+- **Done when:** the highlight matches the voice by ear, and a voice is chosen.
 
 ### Stage 2. Working site
 
@@ -148,7 +151,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 ### Stage 3. Admin and launch
 
 - Netlify Identity: invite-only registration.
-- `/admin`: login, the "Title, Text, Create" form, the list of texts with status.
+- `/admin`: login, the "Title, Text, Voice, Create" form (voice is a list of the allowed voices, the default preselected), the list of texts with status.
 - `POST /api/texts`: checks the login, saves the text with status `processing`, starts the workflow through the GitHub API.
 - A "Retry" button for status `error`.
 - Delete: `DELETE /api/texts/:id` removes the JSON and the mp3; confirmation in the admin page.

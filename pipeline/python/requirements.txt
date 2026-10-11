@@ -1,0 +1,16 @@
+# Python packages for kokoro_tts.py, the only Python in the project.
+# Versions are pinned to a set from mid-2025 that matches kokoro 0.9.4, so updates elsewhere cannot break it.
+
+# CPU build of torch: the CUDA build is over 2 GB and runners have no GPU.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.7.1+cpu
+
+kokoro==0.9.4
+misaki[en]==0.9.4
+transformers==4.53.3
+huggingface-hub==0.34.3
+numpy==2.3.2
+spacy==3.8.7
+
+# English language model for spaCy; without it misaki downloads it at run time.
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

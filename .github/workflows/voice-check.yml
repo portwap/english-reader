@@ -35,8 +35,11 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
+      # --no-deps installs exactly the pinned set; pip check fails if anything is missing.
       - name: Install Python packages
-        run: pip install -r pipeline/python/requirements.txt
+        run: |
+          pip install --no-deps -r pipeline/python/requirements.txt
+          pip check
 
       # The model and voices (about 330 MB) come from Hugging Face; the cache saves downloading them every run.
       - name: Cache Kokoro model

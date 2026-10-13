@@ -55,7 +55,7 @@ a {
 
 .back {
   display: inline-block;
-  margin-top: 4px;
+  margin: 4px 0 12px;
   text-decoration: none;
 }
 
@@ -180,6 +180,7 @@ a {
 .hint {
   max-width: 720px;
   margin: 6px auto 0;
+  text-align: center;
   font-size: 0.8rem;
   color: var(--muted);
 }

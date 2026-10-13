@@ -97,13 +97,17 @@ function showText(doc: TextDoc, player: Player): () => void {
   }
 
   let litWord = -1;
+  /** Words marked where reading was paused: one for the whole text, one for the selected sentence. */
   let pausedWord = -1;
+  let sentencePausedWord = -1;
   let selected = -1;
   let showTranslation = false;
   /** What is playing: the whole text, the selected sentence, or nothing. */
   let mode: 'idle' | 'all' | 'sentence' = 'idle';
   /** Where reading the whole text continues after a pause. */
   let resumeAt = 0;
+  /** Where the selected sentence continues after a pause; null when it is not paused. */
+  let sentenceResumeAt: number | null = null;
   let soundReady = false;
 
   /** Tells the reader what they can do next: select a sentence, or play or translate the selected one. */
@@ -125,17 +129,32 @@ function showText(doc: TextDoc, player: Player): () => void {
     litWord = index;
   }
 
-  /** Marks the word where reading the whole text was paused, or removes the mark for -1. */
-  function markPause(index: number): void {
-    wordSpans[pausedWord]?.classList.remove('paused');
-    wordSpans[index]?.classList.add('paused');
-    pausedWord = index;
+  /**
+   * Moves a pause mark from one word to another.
+   * @param from Word that has the mark now, or -1.
+   * @param to Word to mark, or -1 to only remove the mark.
+   * @returns The newly marked word.
+   */
+  function movePauseMark(from: number, to: number): number {
+    wordSpans[from]?.classList.remove('paused');
+    wordSpans[to]?.classList.add('paused');
+    return to;
+  }
+
+  /** Forgets a paused sentence, so its button starts the sentence from the beginning again. */
+  function resetSentencePause(): void {
+    sentenceResumeAt = null;
+    sentencePausedWord = movePauseMark(sentencePausedWord, -1);
+    playSentenceButton.textContent = '▶ Предложение';
   }
 
   /** Selects a sentence, or clears the selection for -1, and updates the bar to match. */
   function select(index: number): void {
     // A translation belongs to one sentence: choosing another sentence hides it until asked again.
-    if (index !== selected) showTranslation = false;
+    if (index !== selected) {
+      showTranslation = false;
+      resetSentencePause();
+    }
     sentenceLines[selected]?.classList.remove('selected');
     selected = index;
     sentenceLines[index]?.classList.add('selected');
@@ -159,7 +178,14 @@ function showText(doc: TextDoc, player: Player): () => void {
       // At the very end, the next reading starts again from the beginning.
       const finished = position >= player.duration - 0.05;
       resumeAt = finished ? 0 : position;
-      markPause(finished ? -1 : lastWordStarted(words, position));
+      pausedWord = movePauseMark(pausedWord, finished ? -1 : lastWordStarted(words, position));
+    }
+    if (mode === 'sentence') {
+      const range = sentenceRange(doc.sentences, selected, player.duration);
+      const finished = position >= range.to - 0.05;
+      sentenceResumeAt = finished ? null : position;
+      sentencePausedWord = movePauseMark(sentencePausedWord, finished ? -1 : lastWordStarted(words, position));
+      playSentenceButton.textContent = finished ? '▶ Предложение' : '▶ Дальше';
     }
     mode = 'idle';
     playSentenceButton.setAttribute('aria-pressed', 'false');
@@ -174,7 +200,8 @@ function showText(doc: TextDoc, player: Player): () => void {
     }
     player.stop();
     select(-1);
-    markPause(-1);
+    resetSentencePause();
+    pausedWord = movePauseMark(pausedWord, -1);
     mode = 'all';
     player.play(resumeAt);
     playAllButton.textContent = '⏸ Пауза';
@@ -182,12 +209,21 @@ function showText(doc: TextDoc, player: Player): () => void {
 
   playSentenceButton.addEventListener('click', () => {
     if (selected < 0) return;
+    if (mode === 'sentence') {
+      // A second press while the sentence plays pauses it; onStop remembers where.
+      player.stop();
+      return;
+    }
     player.stop();
     const range = sentenceRange(doc.sentences, selected, player.duration);
+    const from = sentenceResumeAt ?? range.from;
+    sentenceResumeAt = null;
+    sentencePausedWord = movePauseMark(sentencePausedWord, -1);
     mode = 'sentence';
     // Looks pressed while the sentence plays, like "Перевод" while the translation is shown.
     playSentenceButton.setAttribute('aria-pressed', 'true');
-    player.play(range.from, range.to);
+    playSentenceButton.textContent = '⏸ Пауза';
+    player.play(from, range.to);
   });
 
   translateButton.addEventListener('click', () => {

@@ -1,4 +1,11 @@
-# Netlify build settings: the site is plain files in web/, so there is no build step yet.
+# Netlify settings: Vite builds the pages into web/dist; functions in netlify/functions serve the API.
 
 [build]
-  publish = "web"
+  command = "npm run build"
+  publish = "web/dist"
+
+# Every text page address is served by the one text page, which reads the id from the address.
+[[redirects]]
+  from = "/texts/*"
+  to = "/text.html"
+  status = 200

@@ -15,7 +15,7 @@ Facts about services are as of 2026-10-11. Re-check them before relying on them.
 5. **Design:** simple, clean, easy to read, works on phone and desktop.
 6. **Out of scope:** speed controls (normal natural speed only), dictionaries, flashcards, other users.
 
-Volume: 1–2 texts a day. Texts can be longer than 300 words; the form limit will be set from measurements, roughly up to 10,000 characters.
+Volume: 1–2 texts a day. Typical texts are about 500–2,500 characters (100–400 words); the form limit will be set from these, with a margin.
 
 Budget: free if possible, at most 2–3 € a month.
 
@@ -156,10 +156,11 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 
 **2b. Site**
 
-- Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id`.
-- Home page: the list of texts. Text page: whole text with word highlight, one sentence, a word on click (a slice of the full recording with 30–50 ms padding), sentence translation on a button. Playback through the Web Audio API.
-- Simple, clean design, checked on phone and desktop.
-- **Done when:** 3 real texts, including the longest one, are added through the workflow and work on the site on a phone; tests pass; processing time is measured.
+- Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id` (the mp3 is streamed).
+- Home page: the list of ready texts. Text page at `/texts/<id>`: the text in paragraphs; tapping a word plays it (a slice of the full recording with 40 ms padding) and selects its sentence; a bottom bar plays the whole text (pause and continue) or the selected sentence, and shows its translation. Playback through the Web Audio API at 24 kHz.
+- Pages are built with Vite into `web/dist`; in development, `/api` is sent to a deployed site (`API_ORIGIN`).
+- Simple, clean design; Android phones first, desktop too.
+- **Done when:** 2 real texts are added through the workflow and work on the site on an Android phone; tests pass; processing time is measured (2a: 21–34 s of processing, 2–2.5 min per workflow run).
 
 ### Stage 3. Admin and launch
 
@@ -176,7 +177,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 
 ## Open questions
 
-- **Translation model:** chosen by ranking (see Translation); check the translations of the first 3 texts by reading them. Free OpenRouter models are sometimes removed without notice; the fallback model and the `TRANSLATION_MODELS` setting cover that.
+- **Translation model:** chosen by ranking (see Translation); check the translations of the first texts by reading them. Free OpenRouter models are sometimes removed without notice; the fallback model and the `TRANSLATION_MODELS` setting cover that.
 - **Repository visibility:** public for now.
 
 Deferred: a separate "dictionary" voice for single words (a new `TtsProvider` method); DeepL as a fallback translator (one more `Translator` adapter).

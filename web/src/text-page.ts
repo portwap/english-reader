@@ -104,6 +104,16 @@ function showText(doc: TextDoc, player: Player): () => void {
   let mode: 'idle' | 'all' | 'sentence' = 'idle';
   /** Where reading the whole text continues after a pause. */
   let resumeAt = 0;
+  let soundReady = false;
+
+  /** Tells the reader what they can do next: select a sentence, or play or translate the selected one. */
+  function updateHint(): void {
+    if (!soundReady) return;
+    hintBox.textContent =
+      selected < 0
+        ? 'Нажмите на предложение, чтобы выбрать его.'
+        : 'Предложение выбрано: его можно послушать или открыть перевод.';
+  }
 
   /** Moves the reading highlight to a word, or removes it for -1. */
   function light(index: number): void {
@@ -130,6 +140,7 @@ function showText(doc: TextDoc, player: Player): () => void {
     playSentenceButton.disabled = index < 0 || player.duration === 0;
     translateButton.disabled = index < 0;
     updateTranslation();
+    updateHint();
   }
 
   /** Shows the translation of the selected sentence when it is turned on. */
@@ -188,8 +199,10 @@ function showText(doc: TextDoc, player: Player): () => void {
   });
 
   return () => {
+    soundReady = true;
     playAllButton.disabled = false;
     playSentenceButton.disabled = selected < 0;
+    updateHint();
   };
 }
 
@@ -223,7 +236,6 @@ async function main(): Promise<void> {
     return;
   }
   enableSound();
-  hintBox.textContent = 'Нажмите на предложение, чтобы выбрать его.';
 }
 
 void main();

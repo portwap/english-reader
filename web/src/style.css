@@ -151,13 +151,13 @@ a {
 .buttons {
   max-width: 720px;
   margin: 0 auto;
-  display: flex;
+  /* Fixed column widths: buttons keep their size when their labels change (▶ Предложение / ⏹ Стоп). */
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
   gap: 8px;
 }
 
 .buttons button {
-  /* Widths follow the labels, so the longest one is never squeezed onto two lines. */
-  flex: 1 1 auto;
   min-height: 44px;
   font: inherit;
   font-size: 0.95rem;

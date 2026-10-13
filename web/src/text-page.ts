@@ -134,6 +134,8 @@ function showText(doc: TextDoc, player: Player): () => void {
 
   /** Selects a sentence, or clears the selection for -1, and updates the bar to match. */
   function select(index: number): void {
+    // A translation belongs to one sentence: choosing another sentence hides it until asked again.
+    if (index !== selected) showTranslation = false;
     sentenceLines[selected]?.classList.remove('selected');
     selected = index;
     sentenceLines[index]?.classList.add('selected');

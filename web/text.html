@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- Text page, served for every /texts/<id> address (see netlify.toml). Filled by src/text-page.ts. -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>English Reader</title>
+  </head>
+  <body>
+    <main class="page">
+      <a class="back" href="/">← Все тексты</a>
+      <h1 id="title"></h1>
+      <p id="status" class="status">Загружаю…</p>
+      <article id="text" class="text" lang="en"></article>
+    </main>
+    <footer id="bar" class="bar" hidden>
+      <p id="translation" class="translation" hidden></p>
+      <div class="buttons">
+        <button id="play-all" type="button" disabled>▶ Текст</button>
+        <button id="play-sentence" type="button" disabled>▶ Предложение</button>
+        <button id="translate" type="button" aria-pressed="false" disabled>Перевод</button>
+      </div>
+      <p id="hint" class="hint">Загружаю звук…</p>
+    </footer>
+    <script type="module" src="/src/text-page.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,168 @@
+/* Styles for all pages: a calm, readable layout that works on a phone first. */
+
+:root {
+  --bg: #fbfaf7;
+  --fg: #1f2328;
+  --muted: #6a6f76;
+  --line: #e3e0d8;
+  --accent: #2f6fde;
+  --word-now: #ffe08a;
+  --selected: #eef3fd;
+  --bar-bg: #ffffff;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181c;
+    --fg: #e6e6e6;
+    --muted: #9aa0a6;
+    --line: #2c3036;
+    --accent: #7aa7ff;
+    --word-now: #6b5a1e;
+    --selected: #1f2a3d;
+    --bar-bg: #1d2025;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  /* Room at the bottom so the fixed bar never covers the last lines. */
+  padding: 16px 16px 200px;
+}
+
+h1 {
+  font-size: 1.6rem;
+  line-height: 1.25;
+  margin: 8px 0 20px;
+}
+
+a {
+  color: var(--accent);
+}
+
+.back {
+  display: inline-block;
+  margin-top: 4px;
+  text-decoration: none;
+}
+
+.status {
+  color: var(--muted);
+}
+
+.text-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.text-list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.text-list a {
+  display: block;
+  padding: 14px 0;
+  font-size: 1.15rem;
+  text-decoration: none;
+}
+
+.text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.25rem;
+  line-height: 1.75;
+}
+
+.text p {
+  margin: 0 0 1em;
+}
+
+.sentence.selected {
+  background: var(--selected);
+  border-radius: 4px;
+}
+
+.word {
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.word.now {
+  background: var(--word-now);
+}
+
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bar-bg);
+  border-top: 1px solid var(--line);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+}
+
+.bar[hidden] {
+  display: none;
+}
+
+.translation {
+  max-width: 720px;
+  margin: 0 auto 10px;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  /* A long translation scrolls inside the bar instead of covering the text. */
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.buttons {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  gap: 8px;
+}
+
+.buttons button {
+  /* Widths follow the labels, so the longest one is never squeezed onto two lines. */
+  flex: 1 1 auto;
+  min-height: 44px;
+  font: inherit;
+  font-size: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+.buttons button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.buttons button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.hint {
+  max-width: 720px;
+  margin: 6px auto 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

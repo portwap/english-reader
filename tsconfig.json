@@ -18,7 +18,8 @@
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "types": [
-      "node"
+      "node",
+      "vite/client"
     ]
   },
   "include": [

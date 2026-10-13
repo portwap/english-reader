@@ -29,6 +29,24 @@ const translateButton = element<HTMLButtonElement>('#translate');
 const translationBox = element<HTMLParagraphElement>('#translation');
 const hintBox = element<HTMLParagraphElement>('#hint');
 
+/** Button icons drawn as SVG: text symbols like ▶ come from other fonts and sit off the middle of the line. */
+const ICONS = {
+  play: '<path d="M5 3.2v9.6l8-4.8z"/>',
+  pause: '<path d="M4 3h3v10H4zM9 3h3v10H9z"/>',
+  stop: '<path d="M4 4h8v8H4z"/>',
+};
+
+/**
+ * Sets a button's icon and label.
+ * @param button The button.
+ * @param icon Which icon to show before the label.
+ * @param label The button's text.
+ */
+function setButton(button: HTMLButtonElement, icon: keyof typeof ICONS, label: string): void {
+  button.innerHTML = `<svg class="icon" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">${ICONS[icon]}</svg>`;
+  button.append(label);
+}
+
 /**
  * Reads the text id from the address: /texts/<id>, or ?id=<id> when pages are served without redirects.
  * @returns The id, or an empty string.
@@ -164,10 +182,10 @@ function showText(doc: TextDoc, player: Player): () => void {
       markPause(finished ? -1 : lastWordStarted(words, position));
     }
     mode = 'idle';
-    playSentenceButton.textContent = '▶ Предложение';
+    setButton(playSentenceButton, 'play', 'Предложение');
     playSentenceButton.setAttribute('aria-pressed', 'false');
     light(-1);
-    playAllButton.textContent = resumeAt > 0 ? '▶ Дальше' : '▶ Текст';
+    setButton(playAllButton, 'play', resumeAt > 0 ? 'Дальше' : 'Текст');
   };
 
   playAllButton.addEventListener('click', () => {
@@ -180,7 +198,7 @@ function showText(doc: TextDoc, player: Player): () => void {
     markPause(-1);
     mode = 'all';
     player.play(resumeAt);
-    playAllButton.textContent = '⏸ Пауза';
+    setButton(playAllButton, 'pause', 'Пауза');
   });
 
   playSentenceButton.addEventListener('click', () => {
@@ -195,7 +213,7 @@ function showText(doc: TextDoc, player: Player): () => void {
     mode = 'sentence';
     // Looks pressed while the sentence plays, like "Перевод" while the translation is shown.
     playSentenceButton.setAttribute('aria-pressed', 'true');
-    playSentenceButton.textContent = '⏹ Стоп';
+    setButton(playSentenceButton, 'stop', 'Стоп');
     player.play(range.from, range.to);
   });
 
@@ -222,6 +240,8 @@ function showText(doc: TextDoc, player: Player): () => void {
 
 /** Loads the text, shows it at once, then loads its audio. */
 async function main(): Promise<void> {
+  setButton(playAllButton, 'play', 'Текст');
+  setButton(playSentenceButton, 'play', 'Предложение');
   const id = textIdFromUrl();
   if (!id) return showStatus('Не указан текст.');
   let doc: TextDoc;

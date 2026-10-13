@@ -168,6 +168,17 @@ a {
   cursor: pointer;
   white-space: nowrap;
   padding: 0 8px;
+  /* Flex centres the icon and the label together, both across and up and down. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.buttons .icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
 
 .buttons button[aria-pressed='true'] {

@@ -1,0 +1,542 @@
+{
+ "voice": "am_liam",
+ "text": "Every morning, Anna takes the 7:45 train to the city. It's not a long trip — about twenty-five minutes — but she doesn't waste it. She reads.\n\nLast year she finished 32 books. \"Some were easy, some weren't,\" she says with a smile. Her favourite was a short novel about a lighthouse keeper who lived alone on a rock in the North Sea for 1,200 days.\n\nWhy read on a train? \"Because nobody can call me there,\" Anna laughs. \"Well, they can. I just don't answer.\" She thinks that reading in English every day, even for ten minutes, has helped her more than any course she's ever paid for.\n",
+ "duration": 32.15,
+ "words": [
+  {
+   "text": "Every",
+   "start": 0.225,
+   "end": 0.5
+  },
+  {
+   "text": "morning",
+   "start": 0.5,
+   "end": 0.85
+  },
+  {
+   "text": "Anna",
+   "start": 0.9,
+   "end": 1.175
+  },
+  {
+   "text": "takes",
+   "start": 1.175,
+   "end": 1.475
+  },
+  {
+   "text": "the",
+   "start": 1.475,
+   "end": 1.613
+  },
+  {
+   "text": "7:45",
+   "start": 1.613,
+   "end": 2.625
+  },
+  {
+   "text": "train",
+   "start": 2.625,
+   "end": 2.9
+  },
+  {
+   "text": "to",
+   "start": 2.9,
+   "end": 2.987
+  },
+  {
+   "text": "the",
+   "start": 2.987,
+   "end": 3.075
+  },
+  {
+   "text": "city",
+   "start": 3.075,
+   "end": 3.725
+  },
+  {
+   "text": "It's",
+   "start": 3.825,
+   "end": 3.975
+  },
+  {
+   "text": "not",
+   "start": 3.975,
+   "end": 4.138
+  },
+  {
+   "text": "a",
+   "start": 4.138,
+   "end": 4.225
+  },
+  {
+   "text": "long",
+   "start": 4.225,
+   "end": 4.55
+  },
+  {
+   "text": "trip",
+   "start": 4.55,
+   "end": 4.812
+  },
+  {
+   "text": "about",
+   "start": 4.862,
+   "end": 5.125
+  },
+  {
+   "text": "twenty-five",
+   "start": 5.125,
+   "end": 5.675
+  },
+  {
+   "text": "minutes",
+   "start": 5.675,
+   "end": 5.987
+  },
+  {
+   "text": "but",
+   "start": 6.037,
+   "end": 6.175
+  },
+  {
+   "text": "she",
+   "start": 6.175,
+   "end": 6.325
+  },
+  {
+   "text": "doesn't",
+   "start": 6.325,
+   "end": 6.625
+  },
+  {
+   "text": "waste",
+   "start": 6.625,
+   "end": 6.95
+  },
+  {
+   "text": "it",
+   "start": 6.95,
+   "end": 7.3
+  },
+  {
+   "text": "She",
+   "start": 7.412,
+   "end": 7.575
+  },
+  {
+   "text": "reads",
+   "start": 7.575,
+   "end": 8.325
+  },
+  {
+   "text": "Last",
+   "start": 8.85,
+   "end": 9.112
+  },
+  {
+   "text": "year",
+   "start": 9.112,
+   "end": 9.3
+  },
+  {
+   "text": "she",
+   "start": 9.3,
+   "end": 9.45
+  },
+  {
+   "text": "finished",
+   "start": 9.45,
+   "end": 9.787
+  },
+  {
+   "text": "32",
+   "start": 9.787,
+   "end": 10.325
+  },
+  {
+   "text": "books",
+   "start": 10.325,
+   "end": 11
+  },
+  {
+   "text": "Some",
+   "start": 11.175,
+   "end": 11.337
+  },
+  {
+   "text": "were",
+   "start": 11.337,
+   "end": 11.475
+  },
+  {
+   "text": "easy",
+   "start": 11.475,
+   "end": 11.8
+  },
+  {
+   "text": "some",
+   "start": 11.85,
+   "end": 12.05
+  },
+  {
+   "text": "weren't",
+   "start": 12.05,
+   "end": 12.45
+  },
+  {
+   "text": "she",
+   "start": 12.575,
+   "end": 12.725
+  },
+  {
+   "text": "says",
+   "start": 12.725,
+   "end": 12.988
+  },
+  {
+   "text": "with",
+   "start": 12.988,
+   "end": 13.113
+  },
+  {
+   "text": "a",
+   "start": 13.113,
+   "end": 13.175
+  },
+  {
+   "text": "smile",
+   "start": 13.175,
+   "end": 13.925
+  },
+  {
+   "text": "Her",
+   "start": 14.025,
+   "end": 14.212
+  },
+  {
+   "text": "favourite",
+   "start": 14.212,
+   "end": 14.613
+  },
+  {
+   "text": "was",
+   "start": 14.613,
+   "end": 14.738
+  },
+  {
+   "text": "a",
+   "start": 14.738,
+   "end": 14.837
+  },
+  {
+   "text": "short",
+   "start": 14.837,
+   "end": 15.125
+  },
+  {
+   "text": "novel",
+   "start": 15.125,
+   "end": 15.475
+  },
+  {
+   "text": "about",
+   "start": 15.475,
+   "end": 15.712
+  },
+  {
+   "text": "a",
+   "start": 15.712,
+   "end": 15.775
+  },
+  {
+   "text": "lighthouse",
+   "start": 15.775,
+   "end": 16.175
+  },
+  {
+   "text": "keeper",
+   "start": 16.175,
+   "end": 16.55
+  },
+  {
+   "text": "who",
+   "start": 16.55,
+   "end": 16.675
+  },
+  {
+   "text": "lived",
+   "start": 16.675,
+   "end": 16.925
+  },
+  {
+   "text": "alone",
+   "start": 16.925,
+   "end": 17.237
+  },
+  {
+   "text": "on",
+   "start": 17.237,
+   "end": 17.337
+  },
+  {
+   "text": "a",
+   "start": 17.337,
+   "end": 17.425
+  },
+  {
+   "text": "rock",
+   "start": 17.425,
+   "end": 17.712
+  },
+  {
+   "text": "in",
+   "start": 17.712,
+   "end": 17.788
+  },
+  {
+   "text": "the",
+   "start": 17.788,
+   "end": 17.875
+  },
+  {
+   "text": "North",
+   "start": 17.875,
+   "end": 18.15
+  },
+  {
+   "text": "Sea",
+   "start": 18.15,
+   "end": 18.375
+  },
+  {
+   "text": "for",
+   "start": 18.375,
+   "end": 18.5
+  },
+  {
+   "text": "1,200",
+   "start": 18.5,
+   "end": 19.45
+  },
+  {
+   "text": "days",
+   "start": 19.45,
+   "end": 20.175
+  },
+  {
+   "text": "Why",
+   "start": 20.675,
+   "end": 20.825
+  },
+  {
+   "text": "read",
+   "start": 20.825,
+   "end": 21.012
+  },
+  {
+   "text": "on",
+   "start": 21.012,
+   "end": 21.113
+  },
+  {
+   "text": "a",
+   "start": 21.113,
+   "end": 21.175
+  },
+  {
+   "text": "train",
+   "start": 21.175,
+   "end": 21.7
+  },
+  {
+   "text": "Because",
+   "start": 21.825,
+   "end": 22.1
+  },
+  {
+   "text": "nobody",
+   "start": 22.1,
+   "end": 22.45
+  },
+  {
+   "text": "can",
+   "start": 22.45,
+   "end": 22.6
+  },
+  {
+   "text": "call",
+   "start": 22.6,
+   "end": 22.825
+  },
+  {
+   "text": "me",
+   "start": 22.825,
+   "end": 22.975
+  },
+  {
+   "text": "there",
+   "start": 22.975,
+   "end": 23.25
+  },
+  {
+   "text": "Anna",
+   "start": 23.325,
+   "end": 23.575
+  },
+  {
+   "text": "laughs",
+   "start": 23.575,
+   "end": 24.25
+  },
+  {
+   "text": "Well",
+   "start": 24.425,
+   "end": 24.575
+  },
+  {
+   "text": "they",
+   "start": 24.612,
+   "end": 24.762
+  },
+  {
+   "text": "can",
+   "start": 24.762,
+   "end": 25.025
+  },
+  {
+   "text": "I",
+   "start": 25.062,
+   "end": 25.175
+  },
+  {
+   "text": "just",
+   "start": 25.175,
+   "end": 25.337
+  },
+  {
+   "text": "don't",
+   "start": 25.337,
+   "end": 25.525
+  },
+  {
+   "text": "answer",
+   "start": 25.525,
+   "end": 26.175
+  },
+  {
+   "text": "She",
+   "start": 26.325,
+   "end": 26.475
+  },
+  {
+   "text": "thinks",
+   "start": 26.475,
+   "end": 26.688
+  },
+  {
+   "text": "that",
+   "start": 26.688,
+   "end": 26.875
+  },
+  {
+   "text": "reading",
+   "start": 26.875,
+   "end": 27.175
+  },
+  {
+   "text": "in",
+   "start": 27.175,
+   "end": 27.262
+  },
+  {
+   "text": "English",
+   "start": 27.262,
+   "end": 27.55
+  },
+  {
+   "text": "every",
+   "start": 27.55,
+   "end": 27.85
+  },
+  {
+   "text": "day",
+   "start": 27.85,
+   "end": 28.15
+  },
+  {
+   "text": "even",
+   "start": 28.225,
+   "end": 28.5
+  },
+  {
+   "text": "for",
+   "start": 28.5,
+   "end": 28.625
+  },
+  {
+   "text": "ten",
+   "start": 28.625,
+   "end": 28.837
+  },
+  {
+   "text": "minutes",
+   "start": 28.837,
+   "end": 29.125
+  },
+  {
+   "text": "has",
+   "start": 29.163,
+   "end": 29.325
+  },
+  {
+   "text": "helped",
+   "start": 29.325,
+   "end": 29.612
+  },
+  {
+   "text": "her",
+   "start": 29.612,
+   "end": 29.75
+  },
+  {
+   "text": "more",
+   "start": 29.75,
+   "end": 29.938
+  },
+  {
+   "text": "than",
+   "start": 29.938,
+   "end": 30.075
+  },
+  {
+   "text": "any",
+   "start": 30.075,
+   "end": 30.275
+  },
+  {
+   "text": "course",
+   "start": 30.275,
+   "end": 30.55
+  },
+  {
+   "text": "she's",
+   "start": 30.55,
+   "end": 30.75
+  },
+  {
+   "text": "ever",
+   "start": 30.75,
+   "end": 30.975
+  },
+  {
+   "text": "paid",
+   "start": 30.975,
+   "end": 31.3
+  },
+  {
+   "text": "for",
+   "start": 31.3,
+   "end": 31.875
+  }
+ ]
+}

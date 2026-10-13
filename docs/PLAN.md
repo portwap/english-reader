@@ -23,7 +23,7 @@ Budget: free if possible, at most 2–3 € a month.
 
 - **Netlify:** site pages, admin login (Netlify Identity, invite-only), storage (Netlify Blobs: texts, translations, timings, mp3), API functions in TypeScript.
 - **GitHub Actions:** processing of each text. Kokoro voices it with word timings, OpenRouter translates it. The result is written to Netlify Blobs.
-- **OpenRouter:** translation with free models. Main: `google/gemma-4-31b-it:free`, fallback: `qwen/qwen3.8-27b:free`.
+- **OpenRouter:** translation with free models. Main: `nvidia/nemotron-3-super-120b-a12b:free`, fallback: `google/gemma-4-31b-it:free` (from another company, so one outage does not stop both).
 
 The path of one text:
 
@@ -43,13 +43,15 @@ type TextDoc = {
   schemaVersion: 1;
   id: string; title: string; createdAt: string;
   status: 'processing' | 'ready' | 'error'; error?: string;
+  source: string;                // the text as pasted, for editing and processing again
   tts: { provider: string; voice: string };
   translation: { provider: string; model: string };
-  audio: string;                 // mp3 key in storage
-  sentences: {
+  audio: string;                 // mp3 key in storage; empty until ready
+  sentences: {                   // empty until ready
     text: string; translation: string;
+    paragraph: number;           // paragraph number, from 0
     start: number; end: number;  // seconds
-    words: { text: string; start: number; end: number }[];
+    words: { text: string; start: number; end: number; at: number }[]; // at: position in the sentence text
   }[];
 };
 ```
@@ -76,18 +78,21 @@ Voices: `af_heart`, `af_sky`, `am_adam`, `am_eric`, `am_liam` (default). The lis
 ```ts
 interface Translator {
   id: string; // 'openrouter'
-  translate(fullText: string, sentences: string[]): Promise<string[]>;
+  translate(fullText: string, sentences: string[]): Promise<{ translations: string[]; model: string }>;
 }
 ```
 
 OpenRouter adapter: one request per text (the whole text plus numbered sentences), JSON answer. Check: exactly one non-empty translation per sentence. On failure: retry, then the fallback model.
 
+Models were chosen by the [WMT24++ translation ranking](https://llm-stats.com/benchmarks/wmt24++) (checked 2026-10-13): Nemotron 3 Super is first among all listed models. The ranking covers 55 languages, not English to Russian alone; no ranking of free models for English to Russian was found.
+
 ### Settings (GitHub Actions variables)
 
 - `TTS_PROVIDER=kokoro`; `TTS_VOICE` is optional: one of the allowed voices, `am_liam` when not set. Change it in GitHub: Settings → Secrets and variables → Actions → Variables.
-- `TRANSLATOR=openrouter`, `TRANSLATION_MODELS=google/gemma-4-31b-it:free,qwen/qwen3.8-27b:free`
+- `TRANSLATOR=openrouter`; `TRANSLATION_MODELS` is optional: comma-separated models in the order to try, `nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-31b-it:free` when not set.
+- `NETLIFY_SITE_ID`: the Netlify project ID (not a secret).
 
-Secrets: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, `OPENROUTER_API_KEY`. They are entered only in GitHub and Netlify settings, never in the repository.
+Secrets: `NETLIFY_AUTH_TOKEN` (a Netlify personal access token with an expiry date; it can reach the whole Netlify account, so it lives only in GitHub secrets), `OPENROUTER_API_KEY`. They are entered only in GitHub and Netlify settings, never in the repository.
 
 ### Contract tests
 
@@ -103,7 +108,9 @@ Every adapter passes the same tests:
 english-reader/
   shared/              data contract (TextDoc type)
   pipeline/            text processing (Node + TypeScript)
-    core/              sentences and words, JSON assembly, checks
+    process.ts         command line entry: processes one text
+    core/              sentences and words, JSON assembly, checks, the processing flow
+    samples/           sample text for dry runs
     tts/               TtsProvider, kokoro.ts, voices.ts (allowed voices)
     translate/         Translator + openrouter.ts
     python/            kokoro_tts.py, the only Python
@@ -136,13 +143,19 @@ The riskiest part goes first: exact word highlighting with Kokoro timings.
 
 ### Stage 2. Working site
 
-Everything except the admin. A new text is added by starting a workflow by hand.
+Everything except the admin. A new text is added by starting a workflow by hand. Two pull requests: 2a processing, 2b site.
+
+**2a. Processing**
 
 - Data contract in `shared/`.
 - Sentence and word splitting with `Intl.Segmenter`; matching Kokoro words to text words (punctuation, numbers, apostrophes).
-- OpenRouter adapter with answer checks and a fallback model; both free models compared on the same 3 texts.
+- OpenRouter adapter with answer checks and a fallback model.
 - Contract tests for both adapters.
-- Workflow `process-text`: takes a text, voices and translates it, writes JSON and mp3 with a status to Netlify Blobs. On failure: status `error` with a clear message. Package and model cache.
+- Workflow `process-text`: takes a title and a text, voices and translates it, writes JSON and mp3 with a status to Netlify Blobs. On failure: status `error` with a clear message. Package and model cache. On pull requests it does a dry run on the sample text and uploads the result instead of writing to storage.
+- Texts are started with `gh workflow run process-text -f title=... -f text="$(cat file.txt)"`, which keeps paragraphs; texts are not committed to the repository.
+
+**2b. Site**
+
 - Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id`.
 - Home page: the list of texts. Text page: whole text with word highlight, one sentence, a word on click (a slice of the full recording with 30–50 ms padding), sentence translation on a button. Playback through the Web Audio API.
 - Simple, clean design, checked on phone and desktop.
@@ -163,7 +176,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 
 ## Open questions
 
-- **Translation model:** in stage 2, compare both free models on the same 3 texts. Free OpenRouter models are sometimes removed without notice.
+- **Translation model:** chosen by ranking (see Translation); check the translations of the first 3 texts by reading them. Free OpenRouter models are sometimes removed without notice; the fallback model and the `TRANSLATION_MODELS` setting cover that.
 - **Repository visibility:** public for now.
 
 Deferred: a separate "dictionary" voice for single words (a new `TtsProvider` method); DeepL as a fallback translator (one more `Translator` adapter).

@@ -162,6 +162,7 @@ function showText(doc: TextDoc, player: Player): () => void {
       markPause(finished ? -1 : lastWordStarted(words, position));
     }
     mode = 'idle';
+    playSentenceButton.setAttribute('aria-pressed', 'false');
     light(-1);
     playAllButton.textContent = resumeAt > 0 ? '▶ Дальше' : '▶ Текст';
   };
@@ -184,6 +185,8 @@ function showText(doc: TextDoc, player: Player): () => void {
     player.stop();
     const range = sentenceRange(doc.sentences, selected, player.duration);
     mode = 'sentence';
+    // Looks pressed while the sentence plays, like "Перевод" while the translation is shown.
+    playSentenceButton.setAttribute('aria-pressed', 'true');
     player.play(range.from, range.to);
   });
 

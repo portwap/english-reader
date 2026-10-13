@@ -9,8 +9,7 @@ Facts about services are as of 2026-10-11. Re-check them before relying on them.
 3. **Processing:** after a text is created, the site voices and translates it on its own, then the text page appears.
 4. **Text page:**
    - play the whole text; the word being spoken is highlighted, exactly in sync with the voice;
-   - play one sentence;
-   - click a word to hear only that word (cut from the full recording);
+   - one sentence per line; tap a sentence to select it, then play it;
    - show the Russian translation of a sentence with a button next to it. Each sentence is translated with the whole text as context. No whole-text translation.
 5. **Design:** simple, clean, easy to read, works on phone and desktop.
 6. **Out of scope:** speed controls (normal natural speed only), dictionaries, flashcards, other users.
@@ -157,7 +156,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 **2b. Site**
 
 - Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id` (the mp3 is streamed).
-- Home page: the list of ready texts. Text page at `/texts/<id>`: the text in paragraphs; tapping a word plays it (a slice of the full recording with 40 ms padding) and selects its sentence; a bottom bar plays the whole text (pause and continue) or the selected sentence, and shows its translation. Playback through the Web Audio API at 24 kHz.
+- Home page: the list of ready texts. Text page at `/texts/<id>`: one sentence per line, paragraphs separated by a gap. Tapping a sentence selects it. A bottom bar plays the whole text (pause and continue; the paused word stays marked; the page follows the highlighted word) or the selected sentence (with up to 0.15 s of margin, never into the next sentence), and shows the selected sentence's translation. Reading the whole text clears the selection and highlights only the word being spoken. Single words are not played: Kokoro's word boundaries are not exact enough for clean slices. Playback through the Web Audio API at 24 kHz.
 - Pages are built with Vite into `web/dist`; in development, `/api` is sent to a deployed site (`API_ORIGIN`).
 - Simple, clean design; Android phones first, desktop too.
 - **Done when:** 2 real texts are added through the workflow and work on the site on an Android phone; tests pass; processing time is measured (2a: 21–34 s of processing, 2–2.5 min per workflow run).

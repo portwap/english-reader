@@ -1,10 +1,10 @@
-// Text page: the text with word highlight, and a bottom bar to play the whole text, a sentence,
-// or a word, and to show a sentence's translation.
+// Text page: one sentence per line, with word highlight while reading. Tapping a sentence selects it;
+// the bottom bar plays the whole text or the selected sentence, and shows the selected sentence's translation.
 
 import type { DocWord, TextDoc } from '../../shared/text-doc.ts';
 import { audioUrl, fetchText } from './api.ts';
 import { Player } from './player.ts';
-import { sentenceParts, wordIndexAt, wordRange } from './timeline.ts';
+import { lastWordStarted, sentenceParts, sentenceRange, wordIndexAt } from './timeline.ts';
 import './style.css';
 
 /**
@@ -48,73 +48,91 @@ function showStatus(message: string): void {
 }
 
 /**
+ * Scrolls a word into view if it is hidden above the screen or behind the bottom bar.
+ * @param word The word's element.
+ */
+function keepInView(word: HTMLElement): void {
+  const box = word.getBoundingClientRect();
+  const visibleBottom = window.innerHeight - bar.getBoundingClientRect().height;
+  if (box.top < 0 || box.bottom > visibleBottom) word.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+/**
  * Builds the page for a ready text and connects the controls. The text is usable at once;
- * buttons that play sound wait until the audio is loaded (see main).
+ * the play buttons wait until the audio is loaded (see main).
  * @param doc The text.
  * @param player The player that will hold the text's audio.
+ * @returns A function that turns on the play buttons; call it once the audio is loaded.
  */
-function showText(doc: TextDoc, player: Player): void {
+function showText(doc: TextDoc, player: Player): () => void {
   const words: DocWord[] = doc.sentences.flatMap((sentence) => sentence.words);
   const wordSpans: HTMLSpanElement[] = [];
-  const sentenceSpans: HTMLSpanElement[] = [];
-  const sentenceOfWord: number[] = [];
+  const sentenceLines: HTMLElement[] = [];
 
-  // Sentences flow inside paragraphs, like in a book; each word is its own tappable span.
-  let paragraph: HTMLParagraphElement | null = null;
+  // Each sentence is its own line; a paragraph is a group of lines with a gap after it.
+  let paragraph: HTMLDivElement | null = null;
   let paragraphNumber = -1;
   for (const [s, sentence] of doc.sentences.entries()) {
     if (sentence.paragraph !== paragraphNumber || !paragraph) {
-      paragraph = document.createElement('p');
+      paragraph = document.createElement('div');
+      paragraph.className = 'paragraph';
       textBox.append(paragraph);
       paragraphNumber = sentence.paragraph;
-    } else {
-      paragraph.append(' ');
     }
-    const sentenceSpan = document.createElement('span');
-    sentenceSpan.className = 'sentence';
+    const line = document.createElement('p');
+    line.className = 'sentence';
+    line.dataset.index = String(s);
     for (const part of sentenceParts(sentence)) {
       if (!part.word) {
-        sentenceSpan.append(part.text);
+        line.append(part.text);
         continue;
       }
       const wordSpan = document.createElement('span');
-      wordSpan.className = 'word';
       wordSpan.textContent = part.text;
-      wordSpan.dataset.index = String(wordSpans.length);
       wordSpans.push(wordSpan);
-      sentenceOfWord.push(s);
-      sentenceSpan.append(wordSpan);
+      line.append(wordSpan);
     }
-    sentenceSpans.push(sentenceSpan);
-    paragraph.append(sentenceSpan);
+    sentenceLines.push(line);
+    paragraph.append(line);
   }
 
   let litWord = -1;
+  let pausedWord = -1;
   let selected = -1;
   let showTranslation = false;
-  /** Where "play all" continues after a pause; separate from word and sentence playback. */
+  /** What is playing: the whole text, the selected sentence, or nothing. */
+  let mode: 'idle' | 'all' | 'sentence' = 'idle';
+  /** Where reading the whole text continues after a pause. */
   let resumeAt = 0;
-  let playingAll = false;
 
-  /** Moves the word highlight to the given word, or removes it for -1. */
+  /** Moves the reading highlight to a word, or removes it for -1. */
   function light(index: number): void {
     if (index === litWord) return;
     wordSpans[litWord]?.classList.remove('now');
-    wordSpans[index]?.classList.add('now');
+    const span = wordSpans[index];
+    span?.classList.add('now');
+    if (span && mode === 'all') keepInView(span);
     litWord = index;
   }
 
-  /** Marks a sentence as selected and shows its controls and, if asked, its translation. */
-  function select(s: number): void {
-    sentenceSpans[selected]?.classList.remove('selected');
-    selected = s;
-    sentenceSpans[s]?.classList.add('selected');
-    playSentenceButton.disabled = false;
-    translateButton.disabled = false;
+  /** Marks the word where reading the whole text was paused, or removes the mark for -1. */
+  function markPause(index: number): void {
+    wordSpans[pausedWord]?.classList.remove('paused');
+    wordSpans[index]?.classList.add('paused');
+    pausedWord = index;
+  }
+
+  /** Selects a sentence, or clears the selection for -1, and updates the bar to match. */
+  function select(index: number): void {
+    sentenceLines[selected]?.classList.remove('selected');
+    selected = index;
+    sentenceLines[index]?.classList.add('selected');
+    playSentenceButton.disabled = index < 0 || player.duration === 0;
+    translateButton.disabled = index < 0;
     updateTranslation();
   }
 
-  /** Shows or hides the translation of the selected sentence. */
+  /** Shows the translation of the selected sentence when it is turned on. */
   function updateTranslation(): void {
     const sentence = doc.sentences[selected];
     translationBox.hidden = !showTranslation || !sentence;
@@ -124,31 +142,36 @@ function showText(doc: TextDoc, player: Player): void {
 
   player.onTick = (position) => light(wordIndexAt(words, position));
   player.onStop = (position) => {
-    light(-1);
-    if (playingAll) {
-      // At the very end, the next "play all" starts again from the beginning.
-      resumeAt = position >= player.duration - 0.05 ? 0 : position;
-      playingAll = false;
+    if (mode === 'all') {
+      // At the very end, the next reading starts again from the beginning.
+      const finished = position >= player.duration - 0.05;
+      resumeAt = finished ? 0 : position;
+      markPause(finished ? -1 : lastWordStarted(words, position));
     }
+    mode = 'idle';
+    light(-1);
     playAllButton.textContent = resumeAt > 0 ? '▶ Дальше' : '▶ Текст';
   };
 
   playAllButton.addEventListener('click', () => {
-    if (playingAll) {
+    if (mode === 'all') {
       player.stop();
       return;
     }
     player.stop();
-    playingAll = true;
+    select(-1);
+    markPause(-1);
+    mode = 'all';
     player.play(resumeAt);
     playAllButton.textContent = '⏸ Пауза';
   });
 
   playSentenceButton.addEventListener('click', () => {
-    const sentence = doc.sentences[selected];
-    if (!sentence) return;
+    if (selected < 0) return;
     player.stop();
-    player.play(sentence.start, sentence.end);
+    const range = sentenceRange(doc.sentences, selected, player.duration);
+    mode = 'sentence';
+    player.play(range.from, range.to);
   });
 
   translateButton.addEventListener('click', () => {
@@ -157,20 +180,20 @@ function showText(doc: TextDoc, player: Player): void {
   });
 
   textBox.addEventListener('click', (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLSpanElement>('.word');
-    const index = Number(target?.dataset.index);
-    const word = words[index];
-    if (!target || !word) return;
-    select(sentenceOfWord[index] ?? -1);
+    const line = (event.target as HTMLElement).closest<HTMLElement>('.sentence');
+    if (!line) return;
+    // Tapping the text stops any playback, so the selection and the sound never disagree.
     player.stop();
-    const range = wordRange(word, player.duration);
-    player.play(range.from, range.to);
+    select(Number(line.dataset.index));
   });
 
-  bar.hidden = false;
+  return () => {
+    playAllButton.disabled = false;
+    playSentenceButton.disabled = selected < 0;
+  };
 }
 
-/** Loads the text and its audio, then shows the page or a clear message. */
+/** Loads the text, shows it at once, then loads its audio. */
 async function main(): Promise<void> {
   const id = textIdFromUrl();
   if (!id) return showStatus('Не указан текст.');
@@ -191,15 +214,16 @@ async function main(): Promise<void> {
 
   statusBox.hidden = true;
   const player = new Player();
-  showText(doc, player);
+  const enableSound = showText(doc, player);
+  bar.hidden = false;
   try {
     await player.load(audioUrl(doc.id));
   } catch {
     hintBox.textContent = 'Не удалось загрузить звук. Обновите страницу.';
     return;
   }
-  playAllButton.disabled = false;
-  hintBox.textContent = 'Нажмите на слово, чтобы услышать его и выбрать предложение.';
+  enableSound();
+  hintBox.textContent = 'Нажмите на предложение, чтобы выбрать его.';
 }
 
 void main();

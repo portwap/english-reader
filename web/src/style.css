@@ -86,22 +86,35 @@ a {
   line-height: 1.75;
 }
 
-.text p {
-  margin: 0 0 1em;
+.paragraph {
+  margin: 0 0 1.4em;
+}
+
+/* One sentence per line; the whole line is the tap target. */
+.sentence {
+  margin: 0 0 0.35em;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .sentence.selected {
   background: var(--selected);
-  border-radius: 4px;
 }
 
-.word {
-  cursor: pointer;
+.sentence span {
   border-radius: 3px;
 }
 
-.word.now {
+.sentence .now {
   background: var(--word-now);
+}
+
+/* Where reading the whole text was paused. */
+.sentence .paused {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .bar {

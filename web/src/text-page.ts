@@ -27,6 +27,7 @@ const playAllButton = element<HTMLButtonElement>('#play-all');
 const playSentenceButton = element<HTMLButtonElement>('#play-sentence');
 const translateButton = element<HTMLButtonElement>('#translate');
 const translationBox = element<HTMLParagraphElement>('#translation');
+const hintBox = element<HTMLParagraphElement>('#hint');
 
 /**
  * Reads the text id from the address: /texts/<id>, or ?id=<id> when pages are served without redirects.
@@ -47,9 +48,10 @@ function showStatus(message: string): void {
 }
 
 /**
- * Builds the page for a ready text and connects the controls.
+ * Builds the page for a ready text and connects the controls. The text is usable at once;
+ * buttons that play sound wait until the audio is loaded (see main).
  * @param doc The text.
- * @param player A player with the text's audio loaded.
+ * @param player The player that will hold the text's audio.
  */
 function showText(doc: TextDoc, player: Player): void {
   const words: DocWord[] = doc.sentences.flatMap((sentence) => sentence.words);
@@ -117,7 +119,7 @@ function showText(doc: TextDoc, player: Player): void {
     const sentence = doc.sentences[selected];
     translationBox.hidden = !showTranslation || !sentence;
     translationBox.textContent = sentence?.translation ?? '';
-    translateButton.textContent = showTranslation ? 'Скрыть перевод' : 'Перевод';
+    translateButton.setAttribute('aria-pressed', String(showTranslation));
   }
 
   player.onTick = (position) => light(wordIndexAt(words, position));
@@ -128,7 +130,7 @@ function showText(doc: TextDoc, player: Player): void {
       resumeAt = position >= player.duration - 0.05 ? 0 : position;
       playingAll = false;
     }
-    playAllButton.textContent = resumeAt > 0 ? '▶ Дальше' : '▶ Весь текст';
+    playAllButton.textContent = resumeAt > 0 ? '▶ Дальше' : '▶ Текст';
   };
 
   playAllButton.addEventListener('click', () => {
@@ -187,15 +189,17 @@ async function main(): Promise<void> {
   if (doc.status === 'processing') return showStatus('Текст ещё обрабатывается. Обновите страницу через пару минут.');
   if (doc.status === 'error') return showStatus(`Текст не удалось обработать: ${doc.error ?? 'неизвестная ошибка'}`);
 
-  showStatus('Загружаю звук…');
+  statusBox.hidden = true;
   const player = new Player();
+  showText(doc, player);
   try {
     await player.load(audioUrl(doc.id));
   } catch {
-    return showStatus('Не удалось загрузить звук. Обновите страницу.');
+    hintBox.textContent = 'Не удалось загрузить звук. Обновите страницу.';
+    return;
   }
-  statusBox.hidden = true;
-  showText(doc, player);
+  playAllButton.disabled = false;
+  hintBox.textContent = 'Нажмите на слово, чтобы услышать его и выбрать предложение.';
 }
 
 void main();

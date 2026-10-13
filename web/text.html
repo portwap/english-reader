@@ -16,11 +16,11 @@
     <footer id="bar" class="bar" hidden>
       <p id="translation" class="translation" hidden></p>
       <div class="buttons">
-        <button id="play-all" type="button">▶ Весь текст</button>
+        <button id="play-all" type="button" disabled>▶ Текст</button>
         <button id="play-sentence" type="button" disabled>▶ Предложение</button>
-        <button id="translate" type="button" disabled>Перевод</button>
+        <button id="translate" type="button" aria-pressed="false" disabled>Перевод</button>
       </div>
-      <p class="hint">Нажмите на слово, чтобы услышать его и выбрать предложение.</p>
+      <p id="hint" class="hint">Загружаю звук…</p>
     </footer>
     <script type="module" src="/src/text-page.ts"></script>
   </body>

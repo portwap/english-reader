@@ -136,7 +136,8 @@ a {
 }
 
 .buttons button {
-  flex: 1;
+  /* Widths follow the labels, so the longest one is never squeezed onto two lines. */
+  flex: 1 1 auto;
   min-height: 44px;
   font: inherit;
   font-size: 0.95rem;
@@ -145,6 +146,13 @@ a {
   background: var(--bg);
   color: var(--fg);
   cursor: pointer;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+.buttons button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .buttons button:disabled {

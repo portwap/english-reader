@@ -54,7 +54,10 @@ a {
 }
 
 .back {
-  display: inline-block;
+  /* Flex keeps the chevron icon centred on the text line, which a text arrow is not. */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin: 4px 0 12px;
   text-decoration: none;
 }

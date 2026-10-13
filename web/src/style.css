@@ -54,8 +54,11 @@ a {
 }
 
 .back {
-  display: inline-block;
-  margin-top: 4px;
+  /* Flex keeps the chevron icon centred on the text line, which a text arrow is not. */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 12px;
   text-decoration: none;
 }
 
@@ -86,21 +89,33 @@ a {
   line-height: 1.75;
 }
 
-.text p {
-  margin: 0 0 1em;
+.paragraph {
+  margin: 0 0 1.4em;
+}
+
+/* One sentence per line; the whole line is the tap target. */
+.sentence {
+  margin: 0 0 0.35em;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .sentence.selected {
   background: var(--selected);
-  border-radius: 4px;
 }
 
-.word {
-  cursor: pointer;
+.sentence span {
   border-radius: 3px;
 }
 
-.word.now {
+.sentence .now {
+  background: var(--word-now);
+}
+
+/* The word where reading the whole text was paused looks like the word being read. */
+.sentence .paused {
   background: var(--word-now);
 }
 
@@ -123,6 +138,11 @@ a {
   margin: 0 auto 10px;
   font-size: 1.05rem;
   line-height: 1.5;
+  /* Set apart from the English text, so it is clear at once that a translation appeared. */
+  padding: 8px 12px;
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  background: var(--selected);
   /* A long translation scrolls inside the bar instead of covering the text. */
   max-height: 30vh;
   overflow-y: auto;
@@ -131,13 +151,13 @@ a {
 .buttons {
   max-width: 720px;
   margin: 0 auto;
-  display: flex;
+  /* Fixed column widths: buttons keep their size when their labels change (▶ Предложение / ⏹ Стоп). */
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
   gap: 8px;
 }
 
 .buttons button {
-  /* Widths follow the labels, so the longest one is never squeezed onto two lines. */
-  flex: 1 1 auto;
   min-height: 44px;
   font: inherit;
   font-size: 0.95rem;
@@ -148,6 +168,17 @@ a {
   cursor: pointer;
   white-space: nowrap;
   padding: 0 8px;
+  /* Flex centres the icon and the label together, both across and up and down. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.buttons .icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
 
 .buttons button[aria-pressed='true'] {
@@ -163,6 +194,7 @@ a {
 .hint {
   max-width: 720px;
   margin: 6px auto 0;
+  text-align: center;
   font-size: 0.8rem;
   color: var(--muted);
 }

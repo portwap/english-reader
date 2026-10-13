@@ -1,8 +1,9 @@
-// Tests for the text page helpers: finding the sounding word and cutting sentences into parts.
+// Tests for the text page helpers: finding words by time, cutting sentences into parts,
+// and the audio range of a sentence.
 
 import { describe, expect, it } from 'vitest';
 import type { DocSentence } from '../../shared/text-doc.ts';
-import { sentenceParts, wordIndexAt, wordRange } from './timeline.ts';
+import { lastWordStarted, sentenceParts, sentenceRange, wordIndexAt } from './timeline.ts';
 
 const sentence: DocSentence = {
   text: '"Well, they can.',
@@ -31,6 +32,14 @@ describe('wordIndexAt', () => {
   });
 });
 
+describe('lastWordStarted', () => {
+  it('finds the last word that has started, also between words and after the end', () => {
+    expect(lastWordStarted(sentence.words, 1.45)).toBe(0);
+    expect(lastWordStarted(sentence.words, 9)).toBe(2);
+    expect(lastWordStarted(sentence.words, 0.5)).toBe(-1);
+  });
+});
+
 describe('sentenceParts', () => {
   it('keeps every character and marks the spoken words', () => {
     const parts = sentenceParts(sentence);
@@ -47,9 +56,21 @@ describe('sentenceParts', () => {
   });
 });
 
-describe('wordRange', () => {
-  it('adds padding around a word but stays inside the audio', () => {
-    expect(wordRange({ text: 'a', start: 1, end: 1.5, at: 0 }, 10)).toEqual({ from: 0.96, to: 1.54 });
-    expect(wordRange({ text: 'a', start: 0.01, end: 9.99, at: 0 }, 10)).toEqual({ from: 0, to: 10 });
+describe('sentenceRange', () => {
+  /** Makes a sentence that sounds from start to end; only the times matter here. */
+  const timed = (start: number, end: number): DocSentence => ({ ...sentence, start, end });
+
+  it('adds a margin on both sides when the pauses are long', () => {
+    const range = sentenceRange([timed(0, 1), timed(2, 3), timed(4, 5)], 1, 6);
+    expect(range.from).toBeCloseTo(1.85);
+    expect(range.to).toBeCloseTo(3.15);
+  });
+
+  it('never reaches past the middle of a short pause to the next or previous sentence', () => {
+    expect(sentenceRange([timed(0, 1), timed(1.1, 2), timed(2.04, 3)], 1, 4)).toEqual({ from: 1.05, to: 2.02 });
+  });
+
+  it('stays inside the audio at the start and the end', () => {
+    expect(sentenceRange([timed(0.05, 1)], 0, 1.1)).toEqual({ from: 0, to: 1.1 });
   });
 });

@@ -9,3 +9,21 @@
   from = "/texts/*"
   to = "/text.html"
   status = 200
+
+# /admin without the .html ending.
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+
+# Security headers for every page and API answer:
+# - scripts, styles, requests and audio only from this site, so a script injected into a page cannot run;
+# - the site cannot be shown inside another site's frame (clickjacking);
+# - browsers must not guess file types, and other sites do not get our addresses as referrer.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"

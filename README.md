@@ -4,9 +4,9 @@ A small site for learning English by reading and listening: https://simple-engli
 
 Paste a short English text into the admin page, and a few minutes later the site has a page for it:
 
-- the whole text read aloud by a natural voice, with the current word highlighted;
-- each sentence can be played on its own;
-- a Russian translation of every sentence, made with the whole text as context.
+- the whole text read aloud by a natural voice, with the current word highlighted (pause and continue);
+- one sentence per line; tap a sentence to play it or to see its translation;
+- each sentence is translated with the whole text as context.
 
 The architecture, the data contract and the stages are in [docs/PLAN.md](docs/PLAN.md).
 

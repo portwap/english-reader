@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Admin: one text with its status, details and actions (/admin/texts/<id>). Filled by src/admin/text.ts. -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Текст · English Reader</title>
+  </head>
+  <body>
+    <main class="page admin">
+      <header class="admin-header">
+        <nav class="admin-nav" aria-label="Админка">
+          <a href="/admin/">Тексты</a>
+          <a href="/admin/new">Новый текст</a>
+        </nav>
+        <div class="admin-nav-side">
+          <a href="/">На сайт</a>
+          <button id="logout" type="button" class="link">Выйти</button>
+        </div>
+      </header>
+      <p id="loading" class="status">Загружаю…</p>
+      <section id="content" hidden>
+        <h1 id="title"></h1>
+        <p><span id="status" class="badge"></span></p>
+        <p id="error" class="error-box" hidden></p>
+        <p id="processing" class="status" hidden>Обработка займёт 2–3 минуты, страница обновится сама.</p>
+        <dl id="details" class="details"></dl>
+        <div class="actions">
+          <a id="open" class="button-link" hidden>Открыть на сайте</a>
+          <a id="edit" class="button-link" hidden>Изменить</a>
+          <button id="retry" type="button" hidden>Повторить</button>
+          <button id="delete" type="button" class="danger" hidden>Удалить</button>
+        </div>
+        <p id="message" class="message" role="alert"></p>
+      </section>
+    </main>
+    <script type="module" src="/src/admin/text.ts"></script>
+  </body>
+</html>

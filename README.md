@@ -12,9 +12,11 @@ The architecture, the data contract and the stages are in [docs/PLAN.md](docs/PL
 
 ## How a text is made
 
-1. The admin logs in at `/admin` and sends a title, a text (up to 5,000 characters) and a voice.
+1. The admin logs in at `/admin/login` and adds a text at `/admin/new`: a title, a text (up to 5,000 characters) and a voice.
 2. A Netlify function saves the text in Netlify Blobs with status `processing` and starts the `process-text` workflow on GitHub Actions with the text id.
-3. The workflow voices the text with Kokoro, translates it with OpenRouter, and saves the result (JSON and mp3) with status `ready`, or status `error` with the reason.
+3. The workflow voices the text with Kokoro, translates it with OpenRouter, and saves the result (JSON and mp3) with status `ready`, or status `error` with the reason. The text's admin page (`/admin/texts/<id>`) shows the status as it changes.
+
+Lists of texts (the home page and `/admin`) are read from one stored index of all texts, which every writer updates safely.
 
 ## Settings
 
@@ -46,7 +48,7 @@ Each outside service is behind one file:
 | Translation (OpenRouter) | `pipeline/translate/` | Write an adapter that implements `Translator`, add it to `pipeline/translate/translators.ts`, set `TRANSLATOR`. |
 | Login (Netlify Identity) | `netlify/lib/auth.ts` (server), `web/src/admin.ts` (login form) | Change these two files. |
 | Starting a run (GitHub Actions) | `netlify/lib/trigger.ts` | Change this file. |
-| Storage (Netlify Blobs) | `shared/storage.ts`, `pipeline/store.ts`, `netlify/lib/texts.ts` | Change the store access in these files; the data format stays. |
+| Storage (Netlify Blobs) | `shared/storage.ts`, `shared/text-index.ts`, `pipeline/store.ts`, `netlify/lib/texts.ts`, the read functions in `netlify/functions/` | Change the store access in these files; the data format stays. |
 
 Every adapter must pass the contract tests in `pipeline/tests/`.
 

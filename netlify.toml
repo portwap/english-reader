@@ -10,10 +10,36 @@
   to = "/text.html"
   status = 200
 
-# /admin without the .html ending.
+# Admin pages; keep in step with ROUTES in vite.config.ts. The edit rule comes before the text rule.
+# The list needs no rule: Netlify serves /admin/ from admin/index.html (and sends /admin there).
 [[redirects]]
-  from = "/admin"
-  to = "/admin.html"
+  from = "/admin/login"
+  to = "/admin/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/forgot"
+  to = "/admin/forgot.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/password"
+  to = "/admin/password.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/new"
+  to = "/admin/form.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/texts/:id/edit"
+  to = "/admin/form.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/texts/:id"
+  to = "/admin/text.html"
   status = 200
 
 # Security headers for every page and API answer:

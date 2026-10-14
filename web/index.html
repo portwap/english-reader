@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Home page: the list of texts. The list is filled by src/home.ts from the API. -->
+<!-- Home page: the newest texts, ten at a time. The list is filled by src/home.ts from the API. -->
 <html lang="ru">
   <head>
     <meta charset="utf-8">
@@ -11,6 +11,7 @@
       <h1>English Reader</h1>
       <p id="status" class="status">Загружаю…</p>
       <ul id="texts" class="text-list"></ul>
+      <button id="more" type="button" class="more" hidden>Показать ещё</button>
     </main>
     <script type="module" src="/src/home.ts"></script>
   </body>

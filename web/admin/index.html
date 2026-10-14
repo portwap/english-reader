@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Admin: the list of texts with search, "Показать ещё" and a page size. Filled by src/admin/list.ts. -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Тексты · English Reader</title>
+  </head>
+  <body>
+    <main class="page admin">
+      <header class="admin-header">
+        <nav class="admin-nav" aria-label="Админка">
+          <a href="/admin/" aria-current="page">Тексты</a>
+          <a href="/admin/new">Новый текст</a>
+        </nav>
+        <div class="admin-nav-side">
+          <a href="/">На сайт</a>
+          <button id="logout" type="button" class="link">Выйти</button>
+        </div>
+      </header>
+      <h1>Тексты</h1>
+      <p id="loading" class="status">Загружаю…</p>
+      <section id="content" hidden>
+        <input id="search" class="search" type="search" placeholder="Поиск по названию" aria-label="Поиск по названию" autocomplete="off">
+        <p id="summary" class="status"></p>
+        <ul id="list" class="admin-list"></ul>
+        <div class="list-footer">
+          <button id="more" type="button" hidden>Показать ещё</button>
+          <label class="page-size">Показывать по
+            <select id="page-size">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+        </div>
+        <p id="message" class="message" role="alert"></p>
+      </section>
+    </main>
+    <script type="module" src="/src/admin/list.ts"></script>
+  </body>
+</html>

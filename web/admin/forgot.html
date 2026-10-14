@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Admin: asking for a password reset email. Filled by src/admin/forgot.ts. -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Восстановление пароля · English Reader</title>
+  </head>
+  <body>
+    <main class="page admin">
+      <header class="admin-header"><p class="admin-brand">Админка</p><div class="admin-nav-side"><a href="/">На сайт</a></div></header>
+      <form id="form" class="card">
+        <h1>Восстановление пароля</h1>
+        <p class="status">Впишите почту, и на неё придёт ссылка, чтобы задать новый пароль.</p>
+        <label>Почта
+          <input id="email" type="email" autocomplete="username" required>
+        </label>
+        <button id="submit" type="submit" class="primary">Отправить ссылку</button>
+        <a href="/admin/login">Вернуться ко входу</a>
+        <p id="message" class="message" role="status"></p>
+      </form>
+    </main>
+    <script type="module" src="/src/admin/forgot.ts"></script>
+  </body>
+</html>

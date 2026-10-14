@@ -29,6 +29,11 @@
   box-sizing: border-box;
 }
 
+/* Hidden means hidden: no display rule below may show an element the code has hidden. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -127,10 +132,6 @@ a {
   background: var(--bar-bg);
   border-top: 1px solid var(--line);
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-}
-
-.bar[hidden] {
-  display: none;
 }
 
 .translation {
@@ -291,6 +292,8 @@ button.link {
   color: var(--accent);
   cursor: pointer;
   padding: 4px 0;
+  justify-self: start;
+  min-height: auto;
 }
 
 .admin-list {

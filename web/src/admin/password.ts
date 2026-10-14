@@ -62,7 +62,7 @@ function setup(mode: Mode): void {
             : 'Сервис входа не ответил. Попробуйте ещё раз через минуту.';
         return;
       }
-      location.replace('/admin');
+      location.replace('/admin/');
     });
   });
   showContent(form);

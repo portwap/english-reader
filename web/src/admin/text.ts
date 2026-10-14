@@ -97,7 +97,7 @@ remove.addEventListener('click', () => {
   void busy(remove, async () => {
     const answer = await api(`/api/admin/texts/${encodeURIComponent(id)}`, 'DELETE');
     if (answer.ok) {
-      location.replace('/admin');
+      location.replace('/admin/');
       return;
     }
     message.textContent = problemOf(answer);

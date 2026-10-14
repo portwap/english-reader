@@ -11,11 +11,7 @@
   status = 200
 
 # Admin pages; keep in step with ROUTES in vite.config.ts. The edit rule comes before the text rule.
-[[redirects]]
-  from = "/admin"
-  to = "/admin/index.html"
-  status = 200
-
+# The list needs no rule: Netlify serves /admin/ from admin/index.html (and sends /admin there).
 [[redirects]]
   from = "/admin/login"
   to = "/admin/login.html"

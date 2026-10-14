@@ -25,7 +25,7 @@ export function element<T extends HTMLElement>(selector: string): T {
  * @returns A safe admin path.
  */
 export function safeNext(next: string | null): string {
-  return next && /^\/admin(\/|$|\?)/.test(next) && !next.startsWith('//') ? next : '/admin';
+  return next && /^\/admin(\/|$|\?)/.test(next) && !next.startsWith('//') ? next : '/admin/';
 }
 
 /** Opens the login page and remembers the current page, to come back after login. */

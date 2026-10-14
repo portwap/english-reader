@@ -12,7 +12,7 @@ describe('safeNext', () => {
 
   it('refuses addresses outside the admin pages, so a crafted link cannot lead to another site', () => {
     for (const bad of [null, '', 'https://evil.example/admin', '//evil.example/admin', '/administrator', '/texts/a', '/']) {
-      expect(safeNext(bad)).toBe('/admin');
+      expect(safeNext(bad)).toBe('/admin/');
     }
   });
 });

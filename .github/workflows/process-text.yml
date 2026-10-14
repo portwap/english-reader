@@ -1,18 +1,13 @@
-# Processes one text: voices it with Kokoro, translates it with OpenRouter, saves the result to Netlify Blobs.
-# Started by hand with a title and a text. On pull requests it does a dry run on the sample text instead.
+# Processes one text that the admin saved in Netlify Blobs: voices it, translates it, saves the result there.
+# Started by the admin API with the text id. On pull requests it does a dry run on the sample text instead.
 
 name: process-text
 
 on:
   workflow_dispatch:
     inputs:
-      title:
-        description: Title of the text
-        required: true
-        type: string
-      text:
-        # The form on GitHub is one line; `gh workflow run process-text -f text="$(cat file.txt)"` keeps paragraphs.
-        description: English text
+      id:
+        description: Text id (the text, title and voice are read from storage)
         required: true
         type: string
   pull_request:
@@ -28,10 +23,11 @@ permissions:
 jobs:
   process:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # A run takes 2–3 minutes; a stuck run is stopped long before the admin page offers "Retry" (20 minutes).
+    timeout-minutes: 15
     env:
+      TRANSLATOR: ${{ vars.TRANSLATOR }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      TTS_VOICE: ${{ vars.TTS_VOICE }}
       TRANSLATION_MODELS: ${{ vars.TRANSLATION_MODELS }}
     steps:
       - uses: actions/checkout@v7
@@ -68,21 +64,29 @@ jobs:
           path: ~/.cache/huggingface
           key: kokoro-82m-v1_0
 
-      # Inputs go through environment variables, never straight into the script, so no text can run as a command.
+      # The id goes through an environment variable, never straight into the script, so it cannot run as a command.
+      # The step's own time limit makes it fail (not cancel), so the next step still runs.
       - name: Process the text
         if: github.event_name == 'workflow_dispatch'
+        timeout-minutes: 12
         env:
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          TITLE: ${{ inputs.title }}
-          TEXT: ${{ inputs.text }}
-        run: |
-          printf '%s' "$TEXT" > "$RUNNER_TEMP/text.txt"
-          node pipeline/process.ts --title "$TITLE" --text-file "$RUNNER_TEMP/text.txt"
+          TEXT_ID: ${{ inputs.id }}
+        run: node pipeline/process.ts --id "$TEXT_ID"
+
+      # If anything above failed or the run was cancelled, the text must not stay "processing" forever.
+      - name: Mark the text as failed if the run stopped
+        if: github.event_name == 'workflow_dispatch' && (failure() || cancelled())
+        env:
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          TEXT_ID: ${{ inputs.id }}
+        run: node pipeline/mark-failed.ts --id "$TEXT_ID"
 
       - name: Dry run on the sample text
         if: github.event_name == 'pull_request'
-        run: node pipeline/process.ts --title "Sample" --text-file pipeline/samples/sample.txt --dry-run out/dry-run
+        run: node pipeline/process.ts --dry-run out/dry-run --title "Sample" --text-file pipeline/samples/sample.txt
 
       - name: Upload the dry run result
         if: github.event_name == 'pull_request' && always()

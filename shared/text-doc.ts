@@ -36,6 +36,8 @@ export interface TextDoc {
   title: string;
   /** ISO 8601 time when the text was added. */
   createdAt: string;
+  /** ISO 8601 time of the last change of status; tells how long a text has been processing. */
+  updatedAt?: string;
   status: TextStatus;
   /** Why processing failed; set only when status is 'error'. */
   error?: string;
@@ -54,5 +56,8 @@ export interface TextSummary {
   id: string;
   title: string;
   createdAt: string;
+  updatedAt?: string;
   status: TextStatus;
+  /** Start of the error message, for the admin list. */
+  error?: string;
 }

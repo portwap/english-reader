@@ -12,15 +12,7 @@ export interface SourceSentence {
   to: number;
 }
 
-/**
- * Brings line endings to "\n" and trims the text, so positions are stable
- * no matter where the text was pasted from.
- * @param text Text as pasted.
- * @returns The same text with "\n" line endings and no spaces at the ends.
- */
-export function normalizeSource(text: string): string {
-  return text.replace(/\r\n?/g, '\n').trim();
-}
+export { normalizeSource } from '../../shared/new-text.ts';
 
 const sentenceSegmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
 

@@ -1,7 +1,6 @@
-// Turns one pasted text into a ready TextDoc and its mp3: split, voice, translate, check, assemble.
+// Turns a text document waiting for processing into a ready one with its mp3: split, voice, translate, check, assemble.
 // Services come in as arguments, so tests can run the whole flow with fakes.
 
-import { randomBytes } from 'node:crypto';
 import { audioKey } from '../../shared/storage.ts';
 import type { TextDoc } from '../../shared/text-doc.ts';
 import type { TtsProvider } from '../tts/provider.ts';
@@ -9,18 +8,12 @@ import type { Translator } from '../translate/translator.ts';
 import { alignWords } from './align.ts';
 import { assembleSentences } from './assemble.ts';
 import { checkTimings, checkTranslations } from './checks.ts';
-import { normalizeSource, splitSentences } from './split.ts';
+import { splitSentences } from './split.ts';
 
-/** What one run needs to know about the text. */
-export interface TextInput {
-  title: string;
-  text: string;
-}
-
-/** The services and settings one run uses. */
+/** The services one run uses. */
 export interface ProcessDeps {
+  /** The voice adapter for the document's tts.provider. */
   tts: TtsProvider;
-  voice: string;
   translator: Translator;
   /** Called with the document each time its status changes (processing, then ready or error). */
   saveDoc: (doc: TextDoc) => Promise<void>;
@@ -28,7 +21,6 @@ export interface ProcessDeps {
   saveAudio: (key: string, mp3: Buffer) => Promise<void>;
   /** Replaceable for tests. */
   now?: () => Date;
-  makeId?: (title: string) => string;
 }
 
 /** The result of a successful run, with step times for measuring. */
@@ -37,22 +29,6 @@ export interface ProcessResult {
   mp3: Buffer;
   /** Seconds spent on each step. */
   seconds: { voice: number; translation: number; total: number };
-}
-
-/**
- * Makes a readable, unique id from a title: a short ASCII slug plus random characters.
- * @param title Text title.
- * @returns An id such as "a-walk-in-the-park-3f9a1c".
- */
-export function makeTextId(title: string): string {
-  const slug = title
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40)
-    .replace(/-+$/, '');
-  return `${slug || 'text'}-${randomBytes(3).toString('hex')}`;
 }
 
 /**
@@ -69,39 +45,36 @@ async function timed<T>(work: Promise<T>): Promise<{ value: T; seconds: number }
 /**
  * Processes one text. Saves it as "processing" first, then as "ready" with its audio,
  * or as "error" with the reason if any step fails.
- * @param input Title and text as pasted.
- * @param deps Services and settings.
+ * @param input The document to process; its source, title and voice are used, old results are replaced.
+ * @param deps Services.
  * @returns The ready document, its mp3 and step times.
  * @throws The step's error, after the "error" document is saved.
  */
-export async function processText(input: TextInput, deps: ProcessDeps): Promise<ProcessResult> {
-  const title = input.title.trim();
-  const source = normalizeSource(input.text);
-  if (!title) throw new Error('The title is empty.');
-  if (!source) throw new Error('The text is empty.');
-
+export async function processText(input: TextDoc, deps: ProcessDeps): Promise<ProcessResult> {
+  const now = () => (deps.now?.() ?? new Date()).toISOString();
   const started = performance.now();
+  if (deps.tts.id !== input.tts.provider) {
+    throw new Error(`Voice adapter "${deps.tts.id}" was given for a "${input.tts.provider}" voice.`);
+  }
   const doc: TextDoc = {
-    schemaVersion: 1,
-    id: (deps.makeId ?? makeTextId)(title),
-    title,
-    createdAt: (deps.now?.() ?? new Date()).toISOString(),
+    ...input,
     status: 'processing',
-    source,
-    tts: { provider: deps.tts.id, voice: deps.voice },
+    updatedAt: now(),
     translation: { provider: deps.translator.id, model: '' },
     audio: '',
     sentences: [],
   };
+  delete doc.error;
   await deps.saveDoc(doc);
 
   try {
-    const sentences = splitSentences(source);
+    if (!doc.source) throw new Error('The text is empty.');
+    const sentences = splitSentences(doc.source);
     const sentenceTexts = sentences.map((sentence) => sentence.text);
     // Voicing uses the CPU and translation waits on the network, so they run side by side.
     const [voiced, translated] = await Promise.all([
-      timed(deps.tts.synthesize(source, deps.voice)),
-      timed(deps.translator.translate(source, sentenceTexts)),
+      timed(deps.tts.synthesize(doc.source, doc.tts.voice)),
+      timed(deps.translator.translate(doc.source, sentenceTexts)),
     ]);
 
     const timingProblems = checkTimings(voiced.value.words, voiced.value.duration);
@@ -109,10 +82,11 @@ export async function processText(input: TextInput, deps: ProcessDeps): Promise<
     const translationProblems = checkTranslations(sentenceTexts, translated.value.translations);
     if (translationProblems.length > 0) throw new Error(`Bad translation: ${translationProblems.join('; ')}`);
 
-    const words = alignWords(source, voiced.value.words);
+    const words = alignWords(doc.source, voiced.value.words);
     const ready: TextDoc = {
       ...doc,
       status: 'ready',
+      updatedAt: now(),
       translation: { provider: deps.translator.id, model: translated.value.model },
       audio: audioKey(doc.id),
       sentences: assembleSentences(sentences, words, translated.value.translations),
@@ -131,7 +105,7 @@ export async function processText(input: TextInput, deps: ProcessDeps): Promise<
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await deps.saveDoc({ ...doc, status: 'error', error: message });
+    await deps.saveDoc({ ...doc, status: 'error', error: message, updatedAt: now() });
     throw error;
   }
 }

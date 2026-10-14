@@ -20,15 +20,15 @@ Budget: free if possible, at most 2–3 € a month.
 
 ## Architecture
 
-- **Netlify:** site pages, admin login (Netlify Identity, invite-only), storage (Netlify Blobs: texts, translations, timings, mp3), API functions in TypeScript.
+- **Netlify:** site pages, admin login (Netlify Identity, invite-only, through the official `@netlify/identity` library), storage (Netlify Blobs: texts, translations, timings, mp3), API functions in TypeScript.
 - **GitHub Actions:** processing of each text. Kokoro voices it with word timings, OpenRouter translates it. The result is written to Netlify Blobs.
 - **OpenRouter:** translation with free models. Main: `nvidia/nemotron-3-super-120b-a12b:free`, fallback: `google/gemma-4-31b-it:free` (from another company, so one outage does not stop both).
 
 The path of one text:
 
-1. The admin logs in at `/admin` and sends a title and a text.
-2. A Netlify function saves the text with status `processing` and starts the GitHub Actions workflow through the GitHub API. The GitHub token (Actions permission on this repository only) is stored in Netlify settings.
-3. The pipeline in Actions splits the text into sentences and words, voices it with Kokoro (word timings included) and translates the sentences through OpenRouter.
+1. The admin logs in at `/admin` and sends a title, a text and a voice.
+2. A Netlify function saves the text with status `processing` and starts the GitHub Actions workflow through the GitHub API with the text id. The GitHub token (Actions: write on this repository only) is stored in Netlify settings.
+3. The pipeline in Actions reads the text from Netlify Blobs by its id, splits it into sentences and words, voices it with Kokoro (word timings included) and translates the sentences through OpenRouter.
 4. JSON and mp3 with status `ready` are written to Netlify Blobs, and the text appears on the home page. No site rebuild is needed.
 
 ## Modularity
@@ -70,7 +70,7 @@ interface TtsProvider {
 
 Kokoro adapter: TypeScript calls a small Python script (the `kokoro` library, word timings taken from it in the standard way); ffmpeg converts WAV to mp3. That script is the only Python in the project.
 
-Voices: `af_heart`, `af_sky`, `am_adam`, `am_eric`, `am_liam` (default). The list lives in `pipeline/tts/voices.ts`; to allow another Kokoro voice, add it there.
+Voices: `af_heart`, `af_sky`, `am_adam`, `am_eric`, `am_liam` (default). The list lives in `shared/voices.ts`; each voice names its provider (`kokoro:am_liam`), and each text keeps the voice it was made with. To add a voice service: write its adapter, add it to `pipeline/tts/providers.ts`, and add its voices to the list.
 
 ### Translation
 
@@ -87,7 +87,7 @@ Models were chosen by the [WMT24++ translation ranking](https://llm-stats.com/be
 
 ### Settings (GitHub Actions variables)
 
-- `TTS_PROVIDER=kokoro`; `TTS_VOICE` is optional: one of the allowed voices, `am_liam` when not set. Change it in GitHub: Settings → Secrets and variables → Actions → Variables.
+- The voice is chosen for each text in the admin form; there is no voice setting.
 - `TRANSLATOR=openrouter`; `TRANSLATION_MODELS` is optional: comma-separated models in the order to try, `nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-31b-it:free` when not set.
 - `NETLIFY_SITE_ID`: the Netlify project ID (not a secret).
 
@@ -105,13 +105,14 @@ Every adapter passes the same tests:
 
 ```text
 english-reader/
-  shared/              data contract (TextDoc type)
+  shared/              data contract (TextDoc), storage layout, voices, rules for a new text
   pipeline/            text processing (Node + TypeScript)
-    process.ts         command line entry: processes one text
+    process.ts         command line entry: processes one text (by id, or a dry run from a file)
+    mark-failed.ts     marks a text as failed if its workflow run stopped early
     core/              sentences and words, JSON assembly, checks, the processing flow
     samples/           sample text for dry runs
-    tts/               TtsProvider, kokoro.ts, voices.ts (allowed voices)
-    translate/         Translator + openrouter.ts
+    tts/               TtsProvider, kokoro.ts, providers.ts (adapter by provider id)
+    translate/         Translator, openrouter.ts, translators.ts (adapter by TRANSLATOR)
     python/            kokoro_tts.py, the only Python
     tests/             adapter contract tests
   web/                 pages (Vite + TypeScript, no framework)
@@ -140,7 +141,7 @@ The riskiest part goes first: exact word highlighting with Kokoro timings.
 - Chosen voices: `af_heart`, `af_sky`, `am_adam`, `am_eric`, `am_liam`; default `am_liam`.
 - **Done when:** the highlight matches the voice by ear, and a voice is chosen.
 
-### Stage 2. Working site
+### Stage 2. Working site (done)
 
 Everything except the admin. A new text is added by starting a workflow by hand. Two pull requests: 2a processing, 2b site.
 
@@ -151,7 +152,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 - OpenRouter adapter with answer checks and a fallback model.
 - Contract tests for both adapters.
 - Workflow `process-text`: takes a title and a text, voices and translates it, writes JSON and mp3 with a status to Netlify Blobs. On failure: status `error` with a clear message. Package and model cache. On pull requests it does a dry run on the sample text and uploads the result instead of writing to storage.
-- Texts are started with `gh workflow run process-text -f title=... -f text="$(cat file.txt)"`, which keeps paragraphs; texts are not committed to the repository.
+- In stage 2, texts were started with `gh workflow run` and a title and text; since 3a the workflow takes a text id, and texts are added in the admin page. Texts are never committed to the repository.
 
 **2b. Site**
 
@@ -163,13 +164,24 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 
 ### Stage 3. Admin and launch
 
-- Netlify Identity: invite-only registration.
-- `/admin`: login, the "Title, Text, Voice, Create" form (voice is a list of the allowed voices, the default preselected), the list of texts with status.
-- `POST /api/texts`: checks the login, saves the text with status `processing`, starts the workflow through the GitHub API.
-- A "Retry" button for status `error`.
-- Delete: `DELETE /api/texts/:id` removes the JSON and the mp3; confirmation in the admin page.
-- Edit: a new title is saved at once; a changed text is saved and processed again.
-- Text length limit in the form, based on measurements.
+Two pull requests: 3a processing by id, 3b admin.
+
+**3a. Processing by id**
+
+- The workflow takes a text id; the text, title and voice are read from storage. The voice adapter is chosen by the voice's provider.
+- Limits: a run stops after 15 minutes (the processing step after 12). If a run fails or is cancelled, a last step sets status `error` so a text never stays `processing`.
+- Shared rules for a new text (`shared/new-text.ts`): title up to 200 characters, text up to 5,000 characters (real texts are about 500–2,500), a voice from the list, ids of `a-z0-9-` only.
+
+**3b. Admin**
+
+- Netlify Identity: invite-only registration; any logged-in user is the admin (only one is invited). Login checks live in one file, so the login service can be replaced in one place.
+- `/admin`: login (and setting a password from the invite), the "Title, Text, Voice, Create" form (voice is a list of the allowed voices, the default preselected), the list of texts with status.
+- Creating a text: checks the login, saves the text with status `processing`, starts the workflow through the GitHub API (the call to GitHub lives in one file).
+- A "Retry" button for status `error`, and for a text still `processing` after 20 minutes.
+- Delete: removes the JSON and the mp3; confirmation in the admin page.
+- Edit: a new title is saved at once; a changed text or voice is saved and processed again.
+- The invite link from the email opens the home page; the home page passes it on to `/admin`.
+- Security: every admin function checks the login on the server; changing requests must come from the site itself (origin check); input is checked on the server; text is always inserted as text, never as HTML; a Content-Security-Policy allows scripts, styles and requests only from the site; the site cannot be shown inside other sites' frames.
 - Check the fallback translation model by turning off the main one.
 - README: where the settings are and how to plug in a new service.
 - **Done when:** from a phone, the admin logs in, pastes a text, and the page is ready a few minutes later; then a week of normal use passes with no manual fixes.
@@ -184,7 +196,7 @@ Deferred: a separate "dictionary" voice for single words (a new `TtsProvider` me
 ## Facts and limits
 
 - **Netlify:** accounts created after 2025-09-04 use credits: 300 free credits a month, a hard limit; a production deploy costs 15 credits, bandwidth 20 credits per GB, requests 2 per 10,000. When credits run out, sites pause until next month. Branch previews are free. Accounts created earlier stay on the legacy free plan; check which plan the account is on and do not switch to credits without a reason. This project's account is on the legacy free plan (100 GB bandwidth and 300 build minutes a month, hard limits), so credits do not apply.
-- **Netlify Identity:** announced as deprecated in February 2025, now listed in the docs as a normal feature of all plans. Git Gateway is deprecated (not needed here).
+- **Netlify Identity:** announced as deprecated in February 2025; the deprecation was reversed in February 2026, and it is supported (docs updated 2026-03-30). Invite-only registration and unlimited users on all plans; on free plans the email templates cannot be customized. No two-factor login. Git Gateway is deprecated (not needed here).
 - **OpenRouter:** free models allow 20 requests a minute and 50 a day (1,000 a day after buying $10+ of credits). Each free model has a single host, with no fallback inside OpenRouter. Some free hosts may keep or train on prompts; texts here are not private.
 - **GitHub Actions:** standard runners are free for public repositories.
 - **Kokoro-82M:** Apache 2.0 weights; word timings for English voices only. The model downloads from Hugging Face.

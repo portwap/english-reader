@@ -1,13 +1,7 @@
 // Tests for splitting a text into paragraphs and sentences with exact positions.
 
 import { describe, expect, it } from 'vitest';
-import { normalizeSource, splitSentences } from './split.ts';
-
-describe('normalizeSource', () => {
-  it('turns Windows and old Mac line endings into \\n and trims the text', () => {
-    expect(normalizeSource('  One.\r\nTwo.\rThree.  \n')).toBe('One.\nTwo.\nThree.');
-  });
-});
+import { splitSentences } from './split.ts';
 
 describe('splitSentences', () => {
   it('finds sentences with positions that point back to the exact text', () => {

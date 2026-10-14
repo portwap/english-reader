@@ -4,13 +4,14 @@
 import type { Config, Context } from '@netlify/functions';
 import { canChange, checkTextInput, ID_PATTERN, normalizeSource, type TextInput } from '../../shared/new-text.ts';
 import type { TextDoc } from '../../shared/text-doc.ts';
+import { DEFAULT_TRANSLATION_MODEL, findTranslationModel } from '../../shared/translation-models.ts';
 import { findVoice, voiceKey } from '../../shared/voices.ts';
 import { checkAdmin } from '../lib/auth.ts';
 import { deleteText, loadDoc, saveAndProcess, saveDoc } from '../lib/texts.ts';
 
 /**
  * Reads, edits or deletes one text.
- * @param request GET; PATCH with JSON {title, text, voice}; or DELETE.
+ * @param request GET; PATCH with JSON {title, text, voice, translationModel}; or DELETE.
  * @param context Holds the text id from the path.
  * @returns GET: the TextDoc. PATCH: the saved TextDoc, or 400 with {errors}, or 502 with {error} if processing
  *   could not start. DELETE: 204. 404 if there is no such text; 409 while a run is working on it.
@@ -38,15 +39,24 @@ export default async (request: Request, context: Context): Promise<Response> => 
   const input = (await request.json().catch(() => ({}))) as Partial<Record<keyof TextInput, unknown>>;
   const errors = checkTextInput(input);
   if (errors.length > 0) return Response.json({ errors }, { status: 400 });
-  const { title, text, voice: key } = input as TextInput;
+  const { title, text, voice: key, translationModel: modelKey } = input as TextInput;
   const voice = findVoice(key);
-  if (!voice) return Response.json({ errors: ['Выберите голос из списка.'] }, { status: 400 });
+  const model = findTranslationModel(modelKey);
+  if (!voice || !model) return Response.json({ errors: ['Выберите голос и модель из списка.'] }, { status: 400 });
 
   const source = normalizeSource(text);
   const now = new Date().toISOString();
-  const edited: TextDoc = { ...doc, title: title.trim(), tts: { provider: voice.provider, voice: voice.id } };
-  // Voice and translation depend on the text and the voice; a new title alone needs no new run.
-  if (source === doc.source && key === voiceKey({ provider: doc.tts.provider, id: doc.tts.voice })) {
+  // Texts saved before models could be chosen count as having the default one.
+  const oldModel = doc.translation.preferred ? `${doc.translation.provider}:${doc.translation.preferred}` : DEFAULT_TRANSLATION_MODEL;
+  const edited: TextDoc = {
+    ...doc,
+    title: title.trim(),
+    tts: { provider: voice.provider, voice: voice.id },
+    translation: { ...doc.translation, provider: model.provider, preferred: model.id },
+  };
+  // Voice and translation depend on the text, the voice and the model; a new title alone needs no new run.
+  const sameVoice = key === voiceKey({ provider: doc.tts.provider, id: doc.tts.voice });
+  if (source === doc.source && sameVoice && modelKey === oldModel) {
     await saveDoc(edited);
     return Response.json(edited);
   }

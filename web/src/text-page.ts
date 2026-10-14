@@ -2,6 +2,7 @@
 // the bottom bar plays the whole text or the selected sentence, and shows the selected sentence's translation.
 
 import type { DocWord, TextDoc } from '../../shared/text-doc.ts';
+import { showAdminBar } from './admin-bar.ts';
 import { audioUrl, fetchText } from './api.ts';
 import { Player } from './player.ts';
 import { lastWordStarted, sentenceParts, sentenceRange, wordIndexAt } from './timeline.ts';
@@ -244,6 +245,10 @@ async function main(): Promise<void> {
   setButton(playSentenceButton, 'play', 'Предложение');
   const id = textIdFromUrl();
   if (!id) return showStatus('Не указан текст.');
+  showAdminBar([
+    { label: 'Админка', href: '/admin/' },
+    { label: 'Этот текст в админке', href: `/admin/texts/${encodeURIComponent(id)}` },
+  ]);
   let doc: TextDoc;
   try {
     doc = await fetchText(id);

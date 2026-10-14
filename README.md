@@ -5,14 +5,14 @@ A small site for learning English by reading and listening: https://simple-engli
 Paste a short English text into the admin page, and a few minutes later the site has a page for it:
 
 - the whole text read aloud by a natural voice, with the current word highlighted (pause and continue);
-- one sentence per line; tap a sentence to play it or to see its Russian translation;
+- one sentence per line; tap a sentence to play it or to see its translation;
 - each sentence is translated with the whole text as context.
 
 The architecture, the data contract and the stages are in [docs/PLAN.md](docs/PLAN.md).
 
 ## How a text is made
 
-1. The admin logs in at `/admin/login` and adds a text at `/admin/new`: a title, a text (up to 5,000 characters) and a voice.
+1. The admin logs in at `/admin/login` and adds a text at `/admin/new`: a title, a text (up to 5,000 characters), a voice and a translation model. The voices and models to choose from are listed in `shared/voices.ts` and `shared/translation-models.ts`.
 2. A Netlify function saves the text in Netlify Blobs with status `processing` and starts the `process-text` workflow on GitHub Actions with the text id.
 3. The workflow voices the text with Kokoro, translates it with OpenRouter, and saves the result (JSON and mp3) with status `ready`, or status `error` with the reason. The text's admin page (`/admin/texts/<id>`) shows the status as it changes.
 
@@ -27,8 +27,6 @@ Secrets live only in these settings, never in the repository.
 | GitHub → Settings → Secrets and variables → Actions → **Secrets** | `OPENROUTER_API_KEY` | OpenRouter API key, for translation |
 | same, **Secrets** | `NETLIFY_AUTH_TOKEN` | Netlify personal access token, so the workflow can write to Netlify Blobs. It can reach the whole Netlify account. |
 | same, **Variables** | `NETLIFY_SITE_ID` | Netlify project ID (not a secret) |
-| same, **Variables** (optional) | `TRANSLATION_MODELS` | OpenRouter models to try in order, comma-separated. Default: `nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-31b-it:free` |
-| same, **Variables** (optional) | `TRANSLATOR` | Translation service. Default: `openrouter` |
 | Netlify → Project configuration → Environment variables | `GITHUB_TOKEN` | GitHub fine-grained token for this repository only, with "Actions: Read and write", so the admin page can start the workflow |
 | Netlify → Identity | | Login for `/admin`. Registration is "Invite only"; only the admin is invited. |
 | OpenRouter → Settings → Privacy | | "Allow free endpoints that train on request data" must be on, or free models refuse requests |
@@ -45,7 +43,7 @@ Each outside service is behind one file:
 | Service | Where | To replace it |
 |---|---|---|
 | Voice (Kokoro) | `pipeline/tts/` | Write an adapter that implements `TtsProvider`, add it to `pipeline/tts/providers.ts`, add its voices to `shared/voices.ts`. Old texts keep their voice. |
-| Translation (OpenRouter) | `pipeline/translate/` | Write an adapter that implements `Translator`, add it to `pipeline/translate/translators.ts`, set `TRANSLATOR`. |
+| Translation (OpenRouter) | `pipeline/translate/` | Write an adapter that implements `Translator`, add it to `pipeline/translate/translators.ts`, add its models to `shared/translation-models.ts`. |
 | Login (Netlify Identity) | `netlify/lib/auth.ts` (server), `web/src/admin.ts` (login form) | Change these two files. |
 | Starting a run (GitHub Actions) | `netlify/lib/trigger.ts` | Change this file. |
 | Storage (Netlify Blobs) | `shared/storage.ts`, `shared/text-index.ts`, `pipeline/store.ts`, `netlify/lib/texts.ts`, the read functions in `netlify/functions/` | Change the store access in these files; the data format stays. |

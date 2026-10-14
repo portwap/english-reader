@@ -44,7 +44,11 @@ export interface TextDoc {
   /** The original text as pasted, kept so it can be edited and processed again. */
   source: string;
   tts: { provider: string; voice: string };
-  translation: { provider: string; model: string };
+  /**
+   * Translation service; the model the admin chose (tried first); and the model that made the translations
+   * (empty until ready; another model if the chosen one failed).
+   */
+  translation: { provider: string; model: string; preferred?: string };
   /** Storage key of the mp3; empty until the text is ready. */
   audio: string;
   /** Empty until the text is ready. */

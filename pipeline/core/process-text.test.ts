@@ -16,7 +16,7 @@ const waiting: TextDoc = {
   status: 'processing',
   source: 'Anna reads.\n\nShe likes “books”. Do you?',
   tts: { provider: 'fake-tts', voice: 'v1' },
-  translation: { provider: '', model: '' },
+  translation: { provider: 'fake-tr', model: '', preferred: 'chosen-model' },
   audio: '',
   sentences: [],
 };
@@ -66,7 +66,7 @@ describe('processText', () => {
       createdAt: '2026-10-13T10:00:00.000Z',
       updatedAt: '2026-10-14T09:00:00.000Z',
       tts: { provider: 'fake-tts', voice: 'v1' },
-      translation: { provider: 'fake-tr', model: 'fake-model' },
+      translation: { provider: 'fake-tr', model: 'fake-model', preferred: 'chosen-model' },
       audio: 'anna-1.mp3',
     });
     expect(doc.sentences.map((s) => [s.text, s.paragraph, s.translation])).toEqual([

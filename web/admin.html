@@ -1,6 +1,6 @@
 <!doctype html>
-<!-- Admin page: login, setting a password from the invite, the form to add or edit a text, the list of all texts.
-     Filled by src/admin.ts; the data comes from the admin API, which checks the login itself. -->
+<!-- Admin page: login, setting a password (from an invite or a reset email), adding and managing texts.
+     Filled by src/admin.ts. Exactly one view is visible at a time; the admin API checks the login itself. -->
 <html lang="ru">
   <head>
     <meta charset="utf-8">
@@ -12,21 +12,22 @@
     <main class="page admin">
       <a class="back" href="/"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Все тексты</a>
       <h1>Админка</h1>
-      <p id="status" class="status">Загружаю…</p>
 
-      <form id="password-form" class="card" hidden>
-        <h2>Задайте пароль</h2>
+      <p id="view-loading" class="status">Загружаю…</p>
+
+      <form id="view-password" class="card" hidden>
+        <h2 id="password-heading">Задайте пароль</h2>
         <label>Пароль (не короче 12 символов)
           <input id="new-password" type="password" autocomplete="new-password" minlength="12" required>
         </label>
         <label>Пароль ещё раз
           <input id="new-password-again" type="password" autocomplete="new-password" minlength="12" required>
         </label>
-        <button type="submit" class="primary">Сохранить пароль</button>
+        <button id="password-save" type="submit" class="primary">Сохранить пароль</button>
         <p id="password-message" class="message" role="alert"></p>
       </form>
 
-      <form id="login-form" class="card" hidden>
+      <form id="view-login" class="card" hidden>
         <h2>Вход</h2>
         <label>Почта
           <input id="email" type="email" autocomplete="username" required>
@@ -34,11 +35,12 @@
         <label>Пароль
           <input id="password" type="password" autocomplete="current-password" required>
         </label>
-        <button type="submit" class="primary">Войти</button>
+        <button id="login-submit" type="submit" class="primary">Войти</button>
+        <button id="forgot" type="button" class="link">Забыли пароль?</button>
         <p id="login-message" class="message" role="alert"></p>
       </form>
 
-      <section id="panel" hidden>
+      <section id="view-panel" hidden>
         <p class="panel-top"><button id="logout" type="button" class="link">Выйти</button></p>
         <form id="text-form" class="card">
           <h2 id="form-heading">Новый текст</h2>

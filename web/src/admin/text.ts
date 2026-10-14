@@ -3,6 +3,7 @@
 
 import { canChange } from '../../../shared/new-text.ts';
 import type { TextDoc } from '../../../shared/text-doc.ts';
+import { translationModelLabel } from '../../../shared/translation-models.ts';
 import { textPageUrl } from '../api.ts';
 import { adminTextUrl, api, busy, element, formatDate, problemOf, requireLogin, setupMenu, showContent, statusLabel } from './common.ts';
 
@@ -51,7 +52,11 @@ function render(text: TextDoc): void {
   detail('Добавлен', formatDate(text.createdAt));
   if (text.updatedAt) detail('Изменён', formatDate(text.updatedAt));
   detail('Голос', `${text.tts.voice} (${text.tts.provider})`);
-  if (text.translation.model) detail('Перевод', text.translation.model);
+  // The chosen model is tried first; if it failed, another one translated, and the page says so.
+  const chosen = text.translation.preferred;
+  const used = text.translation.model;
+  if (chosen) detail('Модель перевода', translationModelLabel(chosen));
+  if (used && used !== chosen) detail(chosen ? 'Перевела (запасная)' : 'Перевела', translationModelLabel(used));
   detail('Символов', String(text.source.length));
   if (text.status === 'ready') detail('Предложений', String(text.sentences.length));
 

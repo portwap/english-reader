@@ -60,7 +60,8 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
     ...input,
     status: 'processing',
     updatedAt: now(),
-    translation: { provider: deps.translator.id, model: '' },
+    // The admin's choice of model stays; the model that actually translates is filled in when ready.
+    translation: { ...input.translation, provider: deps.translator.id, model: '' },
     audio: '',
     sentences: [],
   };
@@ -87,7 +88,7 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
       ...doc,
       status: 'ready',
       updatedAt: now(),
-      translation: { provider: deps.translator.id, model: translated.value.model },
+      translation: { ...doc.translation, model: translated.value.model },
       audio: audioKey(doc.id),
       sentences: assembleSentences(sentences, words, translated.value.translations),
     };

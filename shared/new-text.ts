@@ -2,6 +2,7 @@
 // what the admin sent) and the pipeline, so both sides apply the same limits.
 
 import type { TextDoc } from './text-doc.ts';
+import { findTranslationModel } from './translation-models.ts';
 import { findVoice } from './voices.ts';
 
 /** Longest text accepted. Real texts are about 500–2,500 characters; this leaves room. */
@@ -35,6 +36,8 @@ export interface TextInput {
   text: string;
   /** Voice key, for example "kokoro:am_liam". */
   voice: string;
+  /** Translation model key, for example "openrouter:google/gemma-4-31b-it:free". */
+  translationModel: string;
 }
 
 /**
@@ -61,6 +64,9 @@ export function checkTextInput(input: Partial<Record<keyof TextInput, unknown>>)
   if (text.length > MAX_TEXT_LENGTH) problems.push(`Текст длиннее ${MAX_TEXT_LENGTH} символов (сейчас ${text.length}).`);
   if (!/[A-Za-z]/.test(text) && text) problems.push('В тексте нет английских слов.');
   if (typeof input.voice !== 'string' || !findVoice(input.voice)) problems.push('Выберите голос из списка.');
+  if (typeof input.translationModel !== 'string' || !findTranslationModel(input.translationModel)) {
+    problems.push('Выберите модель перевода из списка.');
+  }
   return problems;
 }
 
@@ -86,11 +92,13 @@ export function makeTextId(title: string): string {
  * @param input A title, text and voice that passed checkTextInput.
  * @param now Current time.
  * @returns A TextDoc with status "processing" and no audio or sentences yet.
- * @throws If the voice is not an allowed one.
+ * @throws If the voice or the translation model is not an allowed one.
  */
 export function newTextDoc(input: TextInput, now: Date = new Date()): TextDoc {
   const voice = findVoice(input.voice);
   if (!voice) throw new Error(`Unknown voice "${input.voice}".`);
+  const model = findTranslationModel(input.translationModel);
+  if (!model) throw new Error(`Unknown translation model "${input.translationModel}".`);
   const title = input.title.trim();
   return {
     schemaVersion: 1,
@@ -101,7 +109,7 @@ export function newTextDoc(input: TextInput, now: Date = new Date()): TextDoc {
     status: 'processing',
     source: normalizeSource(input.text),
     tts: { provider: voice.provider, voice: voice.id },
-    translation: { provider: '', model: '' },
+    translation: { provider: model.provider, model: '', preferred: model.id },
     audio: '',
     sentences: [],
   };

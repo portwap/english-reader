@@ -5,9 +5,6 @@ import type { TranslationResult, Translator } from './translator.ts';
 
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-/** Main model first, then the fallback; chosen by the WMT24++ translation ranking (see docs/PLAN.md). */
-export const DEFAULT_MODELS = ['nvidia/nemotron-3-super-120b-a12b:free', 'google/gemma-4-31b-it:free'];
-
 const SYSTEM_PROMPT = `You translate English texts into Russian for people who are learning English.
 You get the whole text and its sentences, numbered. Translate every numbered sentence into natural, correct Russian.
 Use the whole text as context: speakers, pronouns, tense, names and terms must stay consistent across sentences.
@@ -39,8 +36,8 @@ const ANSWER_SCHEMA = {
 /** Settings for the OpenRouter adapter. */
 export interface OpenRouterOptions {
   apiKey: string;
-  /** Models to try in order. */
-  models?: string[];
+  /** Models to try in order (see modelsToTry in shared/translation-models.ts). */
+  models: string[];
   /** Attempts per model; 2 means one retry. */
   attempts?: number;
   /** Pause before a retry, in milliseconds. Rate limits get a longer pause. */
@@ -49,16 +46,6 @@ export interface OpenRouterOptions {
   timeoutMs?: number;
   /** Replaceable for tests. */
   fetch?: typeof globalThis.fetch;
-}
-
-/**
- * Reads the TRANSLATION_MODELS setting: a comma-separated list of models.
- * @param setting The setting's value; empty or missing means the default models.
- * @returns Models in the order they should be tried.
- */
-export function parseModels(setting: string | undefined): string[] {
-  const models = (setting ?? '').split(',').map((model) => model.trim()).filter(Boolean);
-  return models.length > 0 ? models : DEFAULT_MODELS;
 }
 
 /**
@@ -116,7 +103,7 @@ class ApiError extends Error {
  * @returns A Translator that tries each model in turn, with retries.
  */
 export function createOpenRouter(options: OpenRouterOptions): Translator {
-  const models = options.models ?? DEFAULT_MODELS;
+  const models = options.models;
   const attempts = options.attempts ?? 2;
   const retryDelayMs = options.retryDelayMs ?? 5000;
   const timeoutMs = options.timeoutMs ?? 5 * 60 * 1000;

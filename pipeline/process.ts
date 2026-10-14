@@ -5,13 +5,14 @@
 //     Processes a text the admin saved in storage. Needs NETLIFY_SITE_ID and NETLIFY_AUTH_TOKEN.
 //   node pipeline/process.ts --dry-run <out-folder> --title "Title" --text-file text.txt [--voice kokoro:am_liam]
 //     Processes a local file and writes the JSON and mp3 to a folder instead of storage.
-// Translation settings: TRANSLATOR, OPENROUTER_API_KEY, TRANSLATION_MODELS (see pipeline/translate/translators.ts).
+// The voice and the translation model come with each text; the only setting is the OPENROUTER_API_KEY secret.
 
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { checkTextInput, ID_PATTERN, newTextDoc } from '../shared/new-text.ts';
 import type { TextDoc } from '../shared/text-doc.ts';
+import { DEFAULT_TRANSLATION_MODEL } from '../shared/translation-models.ts';
 import { DEFAULT_VOICE } from '../shared/voices.ts';
 import { processText } from './core/process-text.ts';
 import { netlifyStorage, type TextStorage } from './store.ts';
@@ -72,7 +73,12 @@ async function main(): Promise<void> {
     if (!saved) throw new Error(`Text "${values.id}" is not in storage.`);
     doc = saved;
   } else if (values['dry-run'] && values.title && values['text-file']) {
-    const input = { title: values.title, text: await readFile(values['text-file'], 'utf8'), voice: values.voice ?? DEFAULT_VOICE };
+    const input = {
+      title: values.title,
+      text: await readFile(values['text-file'], 'utf8'),
+      voice: values.voice ?? DEFAULT_VOICE,
+      translationModel: DEFAULT_TRANSLATION_MODEL,
+    };
     const problems = checkTextInput(input);
     if (problems.length > 0) throw new Error(problems.join(' '));
     const folder = folderStorage();
@@ -89,7 +95,10 @@ async function main(): Promise<void> {
 
   let services;
   try {
-    services = { tts: getTtsProvider(doc.tts.provider), translator: createTranslator(process.env) };
+    services = {
+      tts: getTtsProvider(doc.tts.provider),
+      translator: createTranslator(doc.translation.provider, doc.translation.preferred, process.env),
+    };
   } catch (error) {
     // Save the real reason now; otherwise the text would only get the general "run stopped" message.
     const message = error instanceof Error ? error.message : String(error);

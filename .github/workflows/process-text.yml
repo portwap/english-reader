@@ -26,9 +26,7 @@ jobs:
     # A run takes 2–3 minutes; a stuck run is stopped long before the admin page offers "Retry" (20 minutes).
     timeout-minutes: 15
     env:
-      TRANSLATOR: ${{ vars.TRANSLATOR }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      TRANSLATION_MODELS: ${{ vars.TRANSLATION_MODELS }}
     steps:
       - uses: actions/checkout@v7
 

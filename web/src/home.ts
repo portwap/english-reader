@@ -1,5 +1,6 @@
 // Home page: the newest ready texts with links to their pages, ten at a time with "Показать ещё".
 
+import { showAdminBar } from './admin-bar.ts';
 import { fetchTexts, textPageUrl } from './api.ts';
 import './style.css';
 
@@ -36,5 +37,9 @@ async function showMore(): Promise<void> {
   }
 }
 
+showAdminBar([
+  { label: 'Админка', href: '/admin/' },
+  { label: 'Новый текст', href: '/admin/new' },
+]);
 more?.addEventListener('click', () => void showMore());
 void showMore();

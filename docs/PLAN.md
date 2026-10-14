@@ -88,7 +88,7 @@ Models were chosen by the [WMT24++ translation ranking](https://llm-stats.com/be
 ### Settings (GitHub Actions variables)
 
 - The voice is chosen for each text in the admin form; there is no voice setting.
-- `TRANSLATOR=openrouter`; `TRANSLATION_MODELS` is optional: comma-separated models in the order to try, `nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-31b-it:free` when not set.
+- The translation model is chosen for each text in the admin form, from `shared/translation-models.ts`; the chosen one is tried first, the others of the same service follow as fallbacks. There is no model setting.
 - `NETLIFY_SITE_ID`: the Netlify project ID (not a secret).
 
 Secrets: `NETLIFY_AUTH_TOKEN` (a Netlify personal access token with an expiry date; it can reach the whole Netlify account, so it lives only in GitHub secrets), `OPENROUTER_API_KEY`. They are entered only in GitHub and Netlify settings, never in the repository.
@@ -112,7 +112,7 @@ english-reader/
     core/              sentences and words, JSON assembly, checks, the processing flow
     samples/           sample text for dry runs
     tts/               TtsProvider, kokoro.ts, providers.ts (adapter by provider id)
-    translate/         Translator, openrouter.ts, translators.ts (adapter by TRANSLATOR)
+    translate/         Translator, openrouter.ts, translators.ts (adapter by the text's translation provider)
     python/            kokoro_tts.py, the only Python
     tests/             adapter contract tests
   web/                 pages (Vite + TypeScript, no framework); web/admin/ and web/src/admin/ hold the admin pages
@@ -178,7 +178,7 @@ Two pull requests: 3a processing by id, 3b admin.
 - Netlify Identity: invite-only registration; any logged-in user is the admin (only one is invited). Login checks live in one file, so the login service can be replaced in one place.
 - Admin pages, each with its own address and one task; a top menu "Тексты · Новый текст · На сайт · Выйти":
   - `/admin`: the list of texts, newest first, with search by title, "Показать ещё", and "Показывать по 10 / 20 / 50" (remembered in the browser, 10 by default); each row opens the text's page;
-  - `/admin/new` and `/admin/texts/<id>/edit`: the "Title, Text, Voice" form (voice from the allowed list; the last chosen one is preselected), with a character counter;
+  - `/admin/new` and `/admin/texts/<id>/edit`: the "Title, Text, Voice, Translation" form (voice and model from the allowed lists; the last chosen ones are preselected), with a character counter; a new text, voice or model is processed again;
   - `/admin/texts/<id>`: status (and the error), details, and the actions that make sense now: open on the site, edit, retry, delete; it refreshes itself while the text is processed;
   - `/admin/login` (comes back to the page that was asked for; only admin pages are allowed as the way back), `/admin/forgot` (reset email; the same answer for any address), `/admin/password` (from the invite or reset link, or to change the password when logged in).
 - Creating a text: checks the login, saves the text with status `processing`, starts the workflow through the GitHub API (the call to GitHub lives in one file).
@@ -186,6 +186,7 @@ Two pull requests: 3a processing by id, 3b admin.
 - Delete: removes the JSON and the mp3; confirmation in the admin page.
 - Edit: a new title is saved at once; a changed text or voice is saved and processed again.
 - The invite and reset links from the emails open the home page; the home page passes them on to `/admin/password`.
+- Admin bar: in a browser where the admin is logged in, the public pages show a thin bar with links to the admin ("Админка", and "Новый текст" or "Этот текст в админке"). It holds only links; the public pages have no edit or delete buttons.
 - Text index (`shared/text-index.ts`): one stored list with every text's summary, so lists are read with one request instead of one per text. Every writer (pipeline and admin) changes it with conditional writes and retries, so two writers at once lose nothing; a missing index is rebuilt from the texts. The home page and the admin list show it page by page.
 - Security: every admin function checks the login on the server; changing requests must come from the site itself (origin check); input is checked on the server; text is always inserted as text, never as HTML; a Content-Security-Policy allows scripts, styles and requests only from the site; the site cannot be shown inside other sites' frames.
 - Check the fallback translation model by turning off the main one.
@@ -194,7 +195,7 @@ Two pull requests: 3a processing by id, 3b admin.
 
 ## Open questions
 
-- **Translation model:** chosen by ranking (see Translation); check the translations of the first texts by reading them. Free OpenRouter models are sometimes removed without notice; the fallback model and the `TRANSLATION_MODELS` setting cover that.
+- **Translation model:** chosen by ranking (see Translation); check the translations of the first texts by reading them. Free OpenRouter models are sometimes removed without notice; the fallback model covers that, and the list in `shared/translation-models.ts` is changed in one place.
 - **Repository visibility:** public for now.
 
 Deferred: a separate "dictionary" voice for single words (a new `TtsProvider` method); DeepL as a fallback translator (one more `Translator` adapter).

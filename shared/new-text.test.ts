@@ -3,7 +3,12 @@
 import { describe, expect, it } from 'vitest';
 import { canChange, checkTextInput, ID_PATTERN, makeTextId, MAX_TEXT_LENGTH, newTextDoc, normalizeSource } from './new-text.ts';
 
-const good = { title: 'Anna', text: 'Anna reads.', voice: 'kokoro:am_liam' };
+const good = {
+  title: 'Anna',
+  text: 'Anna reads.',
+  voice: 'kokoro:am_liam',
+  translationModel: 'openrouter:google/gemma-4-31b-it:free',
+};
 
 describe('checkTextInput', () => {
   it('accepts a title, an English text and an allowed voice', () => {
@@ -11,15 +16,16 @@ describe('checkTextInput', () => {
   });
 
   it('reports every missing or wrong field', () => {
-    expect(checkTextInput({ title: ' ', text: '', voice: 'kokoro:nobody' })).toEqual([
+    expect(checkTextInput({ title: ' ', text: '', voice: 'kokoro:nobody', translationModel: 'x' })).toEqual([
       'Введите название.',
       'Вставьте текст.',
       'Выберите голос из списка.',
+      'Выберите модель перевода из списка.',
     ]);
   });
 
   it('refuses fields of the wrong type, as a forged request might send', () => {
-    expect(checkTextInput({ title: 42, text: ['x'], voice: null })).toHaveLength(3);
+    expect(checkTextInput({ title: 42, text: ['x'], voice: null, translationModel: 7 })).toHaveLength(4);
   });
 
   it('refuses a text longer than the limit, counted after trimming', () => {
@@ -47,7 +53,7 @@ describe('ID_PATTERN', () => {
 });
 
 describe('newTextDoc', () => {
-  it('starts a text as processing with the chosen voice and the normalized source', () => {
+  it('starts a text as processing with the chosen voice, translation model and the normalized source', () => {
     const doc = newTextDoc({ ...good, title: ' Anna ', text: ' One.\r\nTwo. ' }, new Date('2026-10-14T09:00:00Z'));
     expect(doc).toMatchObject({
       title: 'Anna',
@@ -56,6 +62,7 @@ describe('newTextDoc', () => {
       createdAt: '2026-10-14T09:00:00.000Z',
       updatedAt: '2026-10-14T09:00:00.000Z',
       tts: { provider: 'kokoro', voice: 'am_liam' },
+      translation: { provider: 'openrouter', model: '', preferred: 'google/gemma-4-31b-it:free' },
       audio: '',
       sentences: [],
     });

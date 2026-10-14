@@ -2,6 +2,12 @@
 
 import { canChange, MAX_TEXT_LENGTH } from '../../../shared/new-text.ts';
 import type { TextDoc } from '../../../shared/text-doc.ts';
+import {
+  DEFAULT_TRANSLATION_MODEL,
+  findTranslationModel,
+  TRANSLATION_MODELS,
+  translationModelKey,
+} from '../../../shared/translation-models.ts';
 import { DEFAULT_VOICE, findVoice, VOICES, voiceKey } from '../../../shared/voices.ts';
 import { adminTextUrl, api, busy, element, problemOf, requireLogin, setupMenu, showContent } from './common.ts';
 
@@ -10,13 +16,15 @@ const heading = element<HTMLHeadingElement>('#heading');
 const titleInput = element<HTMLInputElement>('#title');
 const textInput = element<HTMLTextAreaElement>('#text');
 const voiceSelect = element<HTMLSelectElement>('#voice');
+const modelSelect = element<HTMLSelectElement>('#translation-model');
 const counter = element<HTMLParagraphElement>('#counter');
 const save = element<HTMLButtonElement>('#save');
 const cancel = element<HTMLAnchorElement>('#cancel');
 const message = element<HTMLParagraphElement>('#message');
 
-/** Where this browser keeps the last chosen voice, so the next text gets it by default. */
+/** Where this browser keeps the last chosen voice and model, so the next text gets them by default. */
 const VOICE_KEY = 'admin-voice';
+const MODEL_KEY = 'admin-translation-model';
 
 /** Id of the edited text from /admin/texts/<id>/edit, or null on /admin/new. */
 const editingId = decodeURIComponent(/^\/admin\/texts\/([^/]+)\/edit/.exec(location.pathname)?.[1] ?? '') || null;
@@ -29,17 +37,33 @@ function updateCounter(): void {
 }
 
 /**
- * Reads the last chosen voice; browser storage may be unavailable, so the default is the fallback.
- * @returns A voice key from the list.
+ * Reads a remembered choice; browser storage may be unavailable, so the default is the fallback.
+ * @param storageKey Where the choice is kept.
+ * @param isAllowed Whether a stored value is still in the list.
+ * @param fallback The default.
+ * @returns The remembered value if still allowed, otherwise the default.
  */
-function savedVoice(): string {
+function remembered(storageKey: string, isAllowed: (value: string) => boolean, fallback: string): string {
   try {
-    const saved = localStorage.getItem(VOICE_KEY);
-    if (saved && findVoice(saved)) return saved;
+    const saved = localStorage.getItem(storageKey);
+    if (saved && isAllowed(saved)) return saved;
   } catch {
     // Storage blocked: use the default.
   }
-  return DEFAULT_VOICE;
+  return fallback;
+}
+
+/**
+ * Remembers a choice for the next text; a blocked storage just means the default next time.
+ * @param storageKey Where to keep it.
+ * @param value The choice.
+ */
+function remember(storageKey: string, value: string): void {
+  try {
+    localStorage.setItem(storageKey, value);
+  } catch {
+    // Storage blocked: nothing to do.
+  }
 }
 
 /**
@@ -64,23 +88,28 @@ async function loadForEdit(id: string): Promise<boolean> {
   titleInput.value = doc.title;
   textInput.value = doc.source;
   voiceSelect.value = voiceKey({ provider: doc.tts.provider, id: doc.tts.voice });
+  // Texts saved before models could be chosen show the default one.
+  const preferred = doc.translation.preferred;
+  modelSelect.value = preferred ? translationModelKey({ provider: doc.translation.provider, id: preferred }) : DEFAULT_TRANSLATION_MODEL;
   if (!canChange(doc)) {
     message.textContent = 'Текст сейчас обрабатывается. Изменить его можно будет, когда обработка закончится.';
     save.disabled = true;
     return false;
   }
-  message.textContent = 'Новое название сохранится сразу; изменённый текст или голос обработается заново.';
+  message.textContent = 'Новое название сохранится сразу; при новом тексте, голосе или модели перевода текст обработается заново.';
   return true;
 }
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-  const body = { title: titleInput.value, text: textInput.value, voice: voiceSelect.value };
-  try {
-    localStorage.setItem(VOICE_KEY, voiceSelect.value);
-  } catch {
-    // Storage blocked: the default voice will be offered next time.
-  }
+  const body = {
+    title: titleInput.value,
+    text: textInput.value,
+    voice: voiceSelect.value,
+    translationModel: modelSelect.value,
+  };
+  remember(VOICE_KEY, voiceSelect.value);
+  remember(MODEL_KEY, modelSelect.value);
   message.textContent = 'Сохраняю…';
   void busy(save, async () => {
     const answer = editingId
@@ -104,12 +133,19 @@ for (const voice of VOICES) {
   option.textContent = `${voice.id} — ${voice.label}`;
   voiceSelect.append(option);
 }
+for (const model of TRANSLATION_MODELS) {
+  const option = document.createElement('option');
+  option.value = translationModelKey(model);
+  option.textContent = model.label;
+  modelSelect.append(option);
+}
 
 /** Checks the login, fills the form when editing, then shows it. */
 async function start(): Promise<void> {
   await requireLogin();
   setupMenu();
-  voiceSelect.value = savedVoice();
+  voiceSelect.value = remembered(VOICE_KEY, (value) => Boolean(findVoice(value)), DEFAULT_VOICE);
+  modelSelect.value = remembered(MODEL_KEY, (value) => Boolean(findTranslationModel(value)), DEFAULT_TRANSLATION_MODEL);
   if (editingId) await loadForEdit(editingId);
   updateCounter();
   showContent(form);

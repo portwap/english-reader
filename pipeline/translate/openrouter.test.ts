@@ -1,7 +1,7 @@
 // Tests for the OpenRouter adapter with a fake network: answer parsing, retries and the fallback model.
 
 import { describe, expect, it } from 'vitest';
-import { buildPrompt, createOpenRouter, parseAnswer, parseModels } from './openrouter.ts';
+import { buildPrompt, createOpenRouter, parseAnswer } from './openrouter.ts';
 
 /** Builds an OpenRouter-style HTTP response with the given answer text. */
 function answer(content: string, status = 200): Response {
@@ -41,16 +41,6 @@ describe('parseAnswer', () => {
 
   it('rejects a sentence translated twice', () => {
     expect(() => parseAnswer('{"translations":[{"n":1,"ru":"А"},{"n":1,"ru":"Б"}]}', 2)).toThrow(/twice/);
-  });
-});
-
-describe('parseModels', () => {
-  it('uses the default models when the setting is empty', () => {
-    expect(parseModels('')[0]).toBe('nvidia/nemotron-3-super-120b-a12b:free');
-  });
-
-  it('reads a comma-separated list in order', () => {
-    expect(parseModels(' a/one , b/two ')).toEqual(['a/one', 'b/two']);
   });
 });
 

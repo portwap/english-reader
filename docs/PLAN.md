@@ -105,7 +105,7 @@ Every adapter passes the same tests:
 
 ```text
 english-reader/
-  shared/              data contract (TextDoc), storage layout, voices, rules for a new text
+  shared/              data contract (TextDoc), storage layout, text index, voices, rules for a new text
   pipeline/            text processing (Node + TypeScript)
     process.ts         command line entry: processes one text (by id, or a dry run from a file)
     mark-failed.ts     marks a text as failed if its workflow run stopped early
@@ -115,8 +115,9 @@ english-reader/
     translate/         Translator, openrouter.ts, translators.ts (adapter by TRANSLATOR)
     python/            kokoro_tts.py, the only Python
     tests/             adapter contract tests
-  web/                 pages (Vite + TypeScript, no framework)
-  netlify/functions/   API: list, text, audio, create, delete, edit
+  web/                 pages (Vite + TypeScript, no framework); web/admin/ and web/src/admin/ hold the admin pages
+  netlify/functions/   API: list, text, audio; admin: list, create, read, edit, delete, retry
+  netlify/lib/         login check, starting a run, admin storage access
   .github/workflows/   process-text.yml
   netlify.toml
 ```
@@ -157,7 +158,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 **2b. Site**
 
 - Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id` (the mp3 is streamed).
-- Home page: the list of ready texts. Text page at `/texts/<id>`: one sentence per line, paragraphs separated by a gap. Tapping a sentence selects it. A bottom bar plays the whole text (pause and continue; the paused word stays marked; the page follows the highlighted word) or the selected sentence (with up to 0.15 s of margin, never into the next sentence), and shows the selected sentence's translation. Reading the whole text clears the selection and highlights only the word being spoken. Single words are not played: Kokoro's word boundaries are not exact enough for clean slices. Playback through the Web Audio API at 24 kHz.
+- Home page: the ready texts, ten at a time with "Показать ещё". Text page at `/texts/<id>`: one sentence per line, paragraphs separated by a gap. Tapping a sentence selects it. A bottom bar plays the whole text (pause and continue; the paused word stays marked; the page follows the highlighted word) or the selected sentence (with up to 0.15 s of margin, never into the next sentence), and shows the selected sentence's translation. Reading the whole text clears the selection and highlights only the word being spoken. Single words are not played: Kokoro's word boundaries are not exact enough for clean slices. Playback through the Web Audio API at 24 kHz.
 - Pages are built with Vite into `web/dist`; in development, `/api` is sent to a deployed site (`API_ORIGIN`).
 - Simple, clean design; Android phones first, desktop too.
 - **Done when:** 2 real texts are added through the workflow and work on the site on an Android phone; tests pass; processing time is measured (2a: 21–34 s of processing, 2–2.5 min per workflow run).
@@ -175,12 +176,17 @@ Two pull requests: 3a processing by id, 3b admin.
 **3b. Admin**
 
 - Netlify Identity: invite-only registration; any logged-in user is the admin (only one is invited). Login checks live in one file, so the login service can be replaced in one place.
-- `/admin`: login (and setting a password from the invite), the "Title, Text, Voice, Create" form (voice is a list of the allowed voices, the default preselected), the list of texts with status.
+- Admin pages, each with its own address and one task; a top menu "Тексты · Новый текст · На сайт · Выйти":
+  - `/admin`: the list of texts, newest first, with search by title, "Показать ещё", and "Показывать по 10 / 20 / 50" (remembered in the browser, 10 by default); each row opens the text's page;
+  - `/admin/new` and `/admin/texts/<id>/edit`: the "Title, Text, Voice" form (voice from the allowed list; the last chosen one is preselected), with a character counter;
+  - `/admin/texts/<id>`: status (and the error), details, and the actions that make sense now: open on the site, edit, retry, delete; it refreshes itself while the text is processed;
+  - `/admin/login` (comes back to the page that was asked for; only admin pages are allowed as the way back), `/admin/forgot` (reset email; the same answer for any address), `/admin/password` (from the invite or reset link, or to change the password when logged in).
 - Creating a text: checks the login, saves the text with status `processing`, starts the workflow through the GitHub API (the call to GitHub lives in one file).
 - A "Retry" button for status `error`, and for a text still `processing` after 20 minutes.
 - Delete: removes the JSON and the mp3; confirmation in the admin page.
 - Edit: a new title is saved at once; a changed text or voice is saved and processed again.
-- The invite link from the email opens the home page; the home page passes it on to `/admin`.
+- The invite and reset links from the emails open the home page; the home page passes them on to `/admin/password`.
+- Text index (`shared/text-index.ts`): one stored list with every text's summary, so lists are read with one request instead of one per text. Every writer (pipeline and admin) changes it with conditional writes and retries, so two writers at once lose nothing; a missing index is rebuilt from the texts. The home page and the admin list show it page by page.
 - Security: every admin function checks the login on the server; changing requests must come from the site itself (origin check); input is checked on the server; text is always inserted as text, never as HTML; a Content-Security-Policy allows scripts, styles and requests only from the site; the site cannot be shown inside other sites' frames.
 - Check the fallback translation model by turning off the main one.
 - README: where the settings are and how to plug in a new service.

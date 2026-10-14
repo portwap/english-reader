@@ -4,10 +4,21 @@
 import { getStore } from '@netlify/blobs';
 import { AUDIO_STORE, audioKey, summaryOf, TEXTS_STORE } from '../../shared/storage.ts';
 import type { TextDoc, TextSummary } from '../../shared/text-doc.ts';
+import {
+  INDEX_STORE,
+  pageOf,
+  type PageRequest,
+  readIndex,
+  rebuildFrom,
+  removeSummary,
+  updateIndex,
+  upsertSummary,
+} from '../../shared/text-index.ts';
 import { startProcessing } from './trigger.ts';
 
 const texts = () => getStore({ name: TEXTS_STORE, consistency: 'strong' });
 const audio = () => getStore({ name: AUDIO_STORE, consistency: 'strong' });
+const index = () => getStore({ name: INDEX_STORE, consistency: 'strong' });
 
 /**
  * Reads one text.
@@ -24,21 +35,16 @@ export async function loadDoc(id: string): Promise<TextDoc | null> {
  */
 export async function saveDoc(doc: TextDoc): Promise<void> {
   await texts().setJSON(doc.id, doc, { metadata: { ...summaryOf(doc) } });
+  await updateIndex(index(), (list) => upsertSummary(list, summaryOf(doc)), rebuildFrom(texts()));
 }
 
 /**
- * Lists all texts, whatever their status, newest first.
- * @returns Summaries of all texts.
+ * Lists one page of texts, whatever their status, newest first.
+ * @param request Which page, and an optional search by title.
+ * @returns The page and how many texts match in total.
  */
-export async function listTexts(): Promise<TextSummary[]> {
-  const store = texts();
-  const { blobs } = await store.list();
-  const summaries = await Promise.all(
-    blobs.map(async ({ key }) => (await store.getMetadata(key))?.metadata as TextSummary | undefined),
-  );
-  return summaries
-    .filter((summary): summary is TextSummary => Boolean(summary?.id))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export async function listTexts(request: PageRequest): Promise<{ texts: TextSummary[]; total: number }> {
+  return pageOf(await readIndex(index(), rebuildFrom(texts())), request);
 }
 
 /**
@@ -50,6 +56,7 @@ export async function deleteText(doc: TextDoc): Promise<void> {
   // Audio goes first: if the second delete fails, the text is still listed and can be deleted again.
   await audio().delete(audioKey(doc.id));
   await texts().delete(doc.id);
+  await updateIndex(index(), (list) => removeSummary(list, doc.id), rebuildFrom(texts()));
 }
 
 /**

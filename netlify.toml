@@ -10,10 +10,40 @@
   to = "/text.html"
   status = 200
 
-# /admin without the .html ending.
+# Admin pages; keep in step with ROUTES in vite.config.ts. The edit rule comes before the text rule.
 [[redirects]]
   from = "/admin"
-  to = "/admin.html"
+  to = "/admin/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/login"
+  to = "/admin/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/forgot"
+  to = "/admin/forgot.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/password"
+  to = "/admin/password.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/new"
+  to = "/admin/form.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/texts/:id/edit"
+  to = "/admin/form.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/texts/:id"
+  to = "/admin/text.html"
   status = 200
 
 # Security headers for every page and API answer:

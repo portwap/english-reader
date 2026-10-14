@@ -15,12 +15,20 @@ async function getJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+/** One page of a list of texts, and how many there are in total. */
+export interface TextPage {
+  texts: TextSummary[];
+  total: number;
+}
+
 /**
- * Lists the ready texts, newest first.
- * @returns Text summaries.
+ * Lists one page of ready texts, newest first.
+ * @param offset How many texts to skip.
+ * @param limit How many texts to return.
+ * @returns The page and the total number of ready texts.
  */
-export function fetchTexts(): Promise<TextSummary[]> {
-  return getJson('/api/texts');
+export function fetchTexts(offset: number, limit: number): Promise<TextPage> {
+  return getJson(`/api/texts?offset=${offset}&limit=${limit}`);
 }
 
 /**

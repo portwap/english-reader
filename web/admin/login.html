@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- Admin: login. After login the admin goes back to the page they asked for. Filled by src/admin/login.ts. -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Вход · English Reader</title>
+  </head>
+  <body>
+    <main class="page admin">
+      <header class="admin-header"><p class="admin-brand">Админка</p><div class="admin-nav-side"><a href="/">На сайт</a></div></header>
+      <form id="form" class="card">
+        <h1>Вход</h1>
+        <label>Почта
+          <input id="email" type="email" autocomplete="username" required>
+        </label>
+        <label>Пароль
+          <input id="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button id="submit" type="submit" class="primary">Войти</button>
+        <a href="/admin/forgot">Забыли пароль?</a>
+        <p id="message" class="message" role="alert"></p>
+      </form>
+    </main>
+    <script type="module" src="/src/admin/login.ts"></script>
+  </body>
+</html>

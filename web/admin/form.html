@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- Admin: the form for a new text (/admin/new) and for editing one (/admin/texts/<id>/edit). Filled by src/admin/form.ts. -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Новый текст · English Reader</title>
+  </head>
+  <body>
+    <main class="page admin">
+      <header class="admin-header">
+        <nav class="admin-nav" aria-label="Админка">
+          <a href="/admin">Тексты</a>
+          <a href="/admin/new" aria-current="page">Новый текст</a>
+        </nav>
+        <div class="admin-nav-side">
+          <a href="/">На сайт</a>
+          <button id="logout" type="button" class="link">Выйти</button>
+        </div>
+      </header>
+      <h1 id="heading">Новый текст</h1>
+      <p id="loading" class="status">Загружаю…</p>
+      <form id="content" class="card" hidden>
+        <label>Название
+          <input id="title" maxlength="200" required>
+        </label>
+        <label>Текст на английском
+          <textarea id="text" rows="12" required></textarea>
+        </label>
+        <p id="counter" class="counter"></p>
+        <label>Голос
+          <select id="voice"></select>
+        </label>
+        <div class="form-buttons">
+          <button id="save" type="submit" class="primary">Создать</button>
+          <a id="cancel" class="button-link" href="/admin">Отмена</a>
+        </div>
+        <p id="message" class="message" role="alert"></p>
+      </form>
+    </main>
+    <script type="module" src="/src/admin/form.ts"></script>
+  </body>
+</html>

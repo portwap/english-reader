@@ -1,15 +1,16 @@
-// Admin API: GET /api/admin/texts lists all texts with their status; POST /api/admin/texts adds a text
+// Admin API: GET /api/admin/texts?offset&limit&q lists texts with their status; POST /api/admin/texts adds a text
 // and starts its processing. Only the logged-in admin may call it.
 
 import type { Config } from '@netlify/functions';
 import { checkTextInput, newTextDoc, type TextInput } from '../../shared/new-text.ts';
+import { pageRequestOf } from '../../shared/text-index.ts';
 import { checkAdmin } from '../lib/auth.ts';
 import { listTexts, saveAndProcess } from '../lib/texts.ts';
 
 /**
  * Lists texts or adds one.
- * @param request GET, or POST with JSON {title, text, voice}.
- * @returns GET: JSON array of TextSummary. POST: 201 with {id}; 400 with {errors} for bad input;
+ * @param request GET with optional offset, limit and q (search by title), or POST with JSON {title, text, voice}.
+ * @returns GET: {texts, total}, one page of TextSummary newest first. POST: 201 with {id}; 400 with {errors} for bad input;
  *   502 with {error, id} if the text was saved but its processing could not start.
  */
 export default async (request: Request): Promise<Response> => {
@@ -17,7 +18,7 @@ export default async (request: Request): Promise<Response> => {
   if (denied) return denied;
 
   if (request.method === 'GET') {
-    return Response.json(await listTexts(), { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(await listTexts(pageRequestOf(request.url)), { headers: { 'Cache-Control': 'no-store' } });
   }
 
   const input = (await request.json().catch(() => ({}))) as Partial<Record<keyof TextInput, unknown>>;

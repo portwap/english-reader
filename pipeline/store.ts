@@ -4,6 +4,7 @@
 import { getStore } from '@netlify/blobs';
 import { AUDIO_STORE, TEXTS_STORE, summaryOf } from '../shared/storage.ts';
 import type { TextDoc } from '../shared/text-doc.ts';
+import { INDEX_STORE, rebuildFrom, updateIndex, upsertSummary } from '../shared/text-index.ts';
 
 /** Where the pipeline reads texts and saves its results. */
 export interface TextStorage {
@@ -35,6 +36,7 @@ export interface TextStorage {
 export function netlifyStorage(siteID: string, token: string): TextStorage {
   const texts = getStore(TEXTS_STORE, { siteID, token });
   const audio = getStore(AUDIO_STORE, { siteID, token });
+  const index = getStore(INDEX_STORE, { siteID, token });
   return {
     async getDoc(id) {
       // Outside Netlify the client reads through the API, which always returns the latest version.
@@ -42,6 +44,8 @@ export function netlifyStorage(siteID: string, token: string): TextStorage {
     },
     async saveDoc(doc) {
       await texts.setJSON(doc.id, doc, { metadata: { ...summaryOf(doc) } });
+      // The index lists the text with its new status, for the home page and the admin list.
+      await updateIndex(index, (list) => upsertSummary(list, summaryOf(doc)), rebuildFrom(texts));
     },
     async saveAudio(key, mp3) {
       // Copy into a plain ArrayBuffer: a Buffer may be a view into a larger shared one.

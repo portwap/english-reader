@@ -5,8 +5,14 @@ import { getStore } from '@netlify/blobs';
 import { AUDIO_STORE, TEXTS_STORE, summaryOf } from '../shared/storage.ts';
 import type { TextDoc } from '../shared/text-doc.ts';
 
-/** Where the pipeline saves its results. */
+/** Where the pipeline reads texts and saves its results. */
 export interface TextStorage {
+  /**
+   * Reads a text document.
+   * @param id Text id.
+   * @returns The document, or null if there is none.
+   */
+  getDoc(id: string): Promise<TextDoc | null>;
   /**
    * Saves a text document, replacing any older version.
    * @param doc The document.
@@ -30,6 +36,10 @@ export function netlifyStorage(siteID: string, token: string): TextStorage {
   const texts = getStore(TEXTS_STORE, { siteID, token });
   const audio = getStore(AUDIO_STORE, { siteID, token });
   return {
+    async getDoc(id) {
+      // Outside Netlify the client reads through the API, which always returns the latest version.
+      return (await texts.get(id, { type: 'json' })) as TextDoc | null;
+    },
     async saveDoc(doc) {
       await texts.setJSON(doc.id, doc, { metadata: { ...summaryOf(doc) } });
     },

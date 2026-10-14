@@ -24,5 +24,9 @@ export function audioKey(id: string): string {
  * @returns Its summary.
  */
 export function summaryOf(doc: TextDoc): TextSummary {
-  return { id: doc.id, title: doc.title, createdAt: doc.createdAt, status: doc.status };
+  const summary: TextSummary = { id: doc.id, title: doc.title, createdAt: doc.createdAt, status: doc.status };
+  if (doc.updatedAt) summary.updatedAt = doc.updatedAt;
+  // Metadata is limited to 2 KB, so only the start of a long error message is kept here.
+  if (doc.error) summary.error = doc.error.slice(0, 300);
+  return summary;
 }

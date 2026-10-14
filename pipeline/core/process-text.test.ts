@@ -4,9 +4,22 @@ import { describe, expect, it } from 'vitest';
 import type { TextDoc } from '../../shared/text-doc.ts';
 import type { TtsProvider } from '../tts/provider.ts';
 import type { Translator } from '../translate/translator.ts';
-import { makeTextId, processText, type ProcessDeps } from './process-text.ts';
+import { processText, type ProcessDeps } from './process-text.ts';
 
-const TEXT = 'Anna reads.\r\n\r\nShe likes “books”. Do you?';
+/** A text saved by the admin and waiting for processing. */
+const waiting: TextDoc = {
+  schemaVersion: 1,
+  id: 'anna-1',
+  title: 'Anna',
+  createdAt: '2026-10-13T10:00:00.000Z',
+  updatedAt: '2026-10-13T10:00:00.000Z',
+  status: 'processing',
+  source: 'Anna reads.\n\nShe likes “books”. Do you?',
+  tts: { provider: 'fake-tts', voice: 'v1' },
+  translation: { provider: '', model: '' },
+  audio: '',
+  sentences: [],
+};
 
 /** A fake voice that speaks every word of the text one second apart. */
 const fakeTts: TtsProvider = {
@@ -31,12 +44,10 @@ function deps(overrides: Partial<ProcessDeps> = {}) {
   const audio: string[] = [];
   const all: ProcessDeps = {
     tts: fakeTts,
-    voice: 'am_liam',
     translator: fakeTranslator,
     saveDoc: async (doc) => void saved.push(structuredClone(doc)),
     saveAudio: async (key) => void audio.push(key),
-    now: () => new Date('2026-10-13T10:00:00Z'),
-    makeId: () => 'anna-1',
+    now: () => new Date('2026-10-14T09:00:00Z'),
     ...overrides,
   };
   return { all, saved, audio };
@@ -45,7 +56,7 @@ function deps(overrides: Partial<ProcessDeps> = {}) {
 describe('processText', () => {
   it('saves the text as processing, then saves audio and the ready document', async () => {
     const { all, saved, audio } = deps();
-    const { doc } = await processText({ title: ' Anna ', text: TEXT }, all);
+    const { doc } = await processText(waiting, all);
 
     expect(saved.map((d) => d.status)).toEqual(['processing', 'ready']);
     expect(audio).toEqual(['anna-1.mp3']);
@@ -53,8 +64,8 @@ describe('processText', () => {
       id: 'anna-1',
       title: 'Anna',
       createdAt: '2026-10-13T10:00:00.000Z',
-      source: 'Anna reads.\n\nShe likes “books”. Do you?',
-      tts: { provider: 'fake-tts', voice: 'am_liam' },
+      updatedAt: '2026-10-14T09:00:00.000Z',
+      tts: { provider: 'fake-tts', voice: 'v1' },
       translation: { provider: 'fake-tr', model: 'fake-model' },
       audio: 'anna-1.mp3',
     });
@@ -66,7 +77,7 @@ describe('processText', () => {
   });
 
   it('gives each word its place inside its sentence and each sentence its time span', async () => {
-    const { doc } = await processText({ title: 'Anna', text: TEXT }, deps().all);
+    const { doc } = await processText(waiting, deps().all);
     const second = doc.sentences[1];
     expect(second?.words.map((w) => [w.text, w.at])).toEqual([
       ['She', 0],
@@ -79,10 +90,19 @@ describe('processText', () => {
     }
   });
 
+  it('replaces the results and the error of an earlier run', async () => {
+    const failedBefore: TextDoc = { ...waiting, status: 'error', error: 'old problem', audio: 'old.mp3' };
+    const { all, saved } = deps();
+    await processText(failedBefore, all);
+    expect(saved[0]).toMatchObject({ status: 'processing', audio: '', sentences: [] });
+    expect(saved[0]?.error).toBeUndefined();
+    expect(saved[1]?.error).toBeUndefined();
+  });
+
   it('saves the text with status error and the reason when a step fails', async () => {
     const failing: Translator = { id: 'x', translate: async () => Promise.reject(new Error('model is down')) };
     const { all, saved, audio } = deps({ translator: failing });
-    await expect(processText({ title: 'Anna', text: TEXT }, all)).rejects.toThrow('model is down');
+    await expect(processText(waiting, all)).rejects.toThrow('model is down');
     expect(saved.map((d) => [d.status, d.error])).toEqual([
       ['processing', undefined],
       ['error', 'model is down'],
@@ -90,16 +110,9 @@ describe('processText', () => {
     expect(audio).toEqual([]);
   });
 
-  it('refuses an empty text before saving anything', async () => {
-    const { all, saved } = deps();
-    await expect(processText({ title: 'Anna', text: ' \n ' }, all)).rejects.toThrow('The text is empty.');
+  it('refuses a voice adapter that does not match the voice of the text', async () => {
+    const { all, saved } = deps({ tts: { ...fakeTts, id: 'other' } });
+    await expect(processText(waiting, all)).rejects.toThrow(/"other" was given for a "fake-tts" voice/);
     expect(saved).toEqual([]);
-  });
-});
-
-describe('makeTextId', () => {
-  it('makes a short readable slug with a random ending', () => {
-    expect(makeTextId('A Walk in the Park!')).toMatch(/^a-walk-in-the-park-[0-9a-f]{6}$/);
-    expect(makeTextId('Привет')).toMatch(/^text-[0-9a-f]{6}$/);
   });
 });

@@ -198,3 +198,136 @@ a {
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+/* Admin page */
+
+.card {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.card label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.95rem;
+}
+
+.card input,
+.card textarea,
+.card select {
+  font: inherit;
+  font-size: 1rem;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bar-bg);
+  color: var(--fg);
+}
+
+.card textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.card button,
+.item-buttons button {
+  font: inherit;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.card button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.card button:disabled {
+  opacity: 0.6;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.counter {
+  margin: -6px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.counter.over {
+  color: #d64545;
+}
+
+.message {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--muted);
+}
+
+.panel-top {
+  margin: 0 0 8px;
+  text-align: right;
+}
+
+button.link {
+  font: inherit;
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.admin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.item-title {
+  font-size: 1.1rem;
+  text-decoration: none;
+}
+
+.item-status {
+  margin: 4px 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.item-status.error {
+  color: #d64545;
+}
+
+.item-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.item-buttons button {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.9rem;
+}

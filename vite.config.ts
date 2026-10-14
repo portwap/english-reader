@@ -12,7 +12,11 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rolldownOptions: {
-      input: { home: resolve(root, 'index.html'), text: resolve(root, 'text.html') },
+      input: {
+        home: resolve(root, 'index.html'),
+        text: resolve(root, 'text.html'),
+        admin: resolve(root, 'admin.html'),
+      },
     },
   },
   server: {

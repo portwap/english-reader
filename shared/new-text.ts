@@ -13,6 +13,22 @@ export const MAX_TITLE_LENGTH = 200;
 /** Shape of a text id: lowercase ASCII letters, digits and dashes. Anything else is refused before it reaches storage. */
 export const ID_PATTERN = /^[a-z0-9-]{1,64}$/;
 
+/** A run takes 2–3 minutes and is stopped after 15; a text still "processing" after this long is stuck. */
+export const STUCK_AFTER_MS = 20 * 60 * 1000;
+
+/**
+ * Tells whether a text may be edited, retried or deleted now. While a run is working on a text, changes wait:
+ * the run would otherwise overwrite them when it saves its result.
+ * @param text The text's status and the time of its last status change.
+ * @param now Current time.
+ * @returns True unless the text is processing and not yet stuck.
+ */
+export function canChange(text: { status: string; updatedAt?: string; createdAt: string }, now: Date = new Date()): boolean {
+  if (text.status !== 'processing') return true;
+  const since = Date.parse(text.updatedAt ?? text.createdAt);
+  return Number.isNaN(since) || now.getTime() - since > STUCK_AFTER_MS;
+}
+
 /** What the admin sends for a text. */
 export interface TextInput {
   title: string;

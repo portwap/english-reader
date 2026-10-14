@@ -1,7 +1,7 @@
 // Tests for the rules of a new text and the document it starts as.
 
 import { describe, expect, it } from 'vitest';
-import { checkTextInput, ID_PATTERN, makeTextId, MAX_TEXT_LENGTH, newTextDoc, normalizeSource } from './new-text.ts';
+import { canChange, checkTextInput, ID_PATTERN, makeTextId, MAX_TEXT_LENGTH, newTextDoc, normalizeSource } from './new-text.ts';
 
 const good = { title: 'Anna', text: 'Anna reads.', voice: 'kokoro:am_liam' };
 
@@ -66,5 +66,22 @@ describe('newTextDoc', () => {
 describe('normalizeSource', () => {
   it('turns Windows and old Mac line endings into \\n and trims the text', () => {
     expect(normalizeSource('  One.\r\nTwo.\rThree.  \n')).toBe('One.\nTwo.\nThree.');
+  });
+});
+
+describe('canChange', () => {
+  const now = new Date('2026-10-14T10:00:00Z');
+
+  it('allows changes to ready texts and texts with an error', () => {
+    expect(canChange({ status: 'ready', createdAt: '2026-10-14T09:59:00Z' }, now)).toBe(true);
+    expect(canChange({ status: 'error', createdAt: '2026-10-14T09:59:00Z' }, now)).toBe(true);
+  });
+
+  it('holds changes while a run is working on the text', () => {
+    expect(canChange({ status: 'processing', createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-14T09:50:00Z' }, now)).toBe(false);
+  });
+
+  it('allows changes once a processing text is stuck for more than 20 minutes', () => {
+    expect(canChange({ status: 'processing', createdAt: '2026-10-14T09:30:00Z' }, now)).toBe(true);
   });
 });

@@ -44,17 +44,27 @@ export async function requireLogin(): Promise<void> {
   await new Promise(() => {});
 }
 
+/** What an action returns when it has sent the browser to another page. */
+export const LEAVING = 'leaving';
+
 /**
- * Runs an action with its button turned off, so a double tap cannot send it twice.
+ * Runs an action with its button turned off, so a double tap cannot send it twice. The button stays off
+ * when the action opens another page: the next page takes a moment to load, and a second tap meanwhile
+ * would send the action again (for example, create the same text twice).
  * @param button The button that started the action.
- * @param action The action.
+ * @param action The action; returns LEAVING after it has sent the browser to another page.
  */
-export async function busy(button: HTMLButtonElement, action: () => Promise<void>): Promise<void> {
+export async function busy(button: HTMLButtonElement, action: () => Promise<void | typeof LEAVING>): Promise<void> {
   button.disabled = true;
+  let result: void | typeof LEAVING = undefined;
   try {
-    await action();
+    result = await action();
   } finally {
-    button.disabled = false;
+    if (result !== LEAVING) button.disabled = false;
+  }
+  // "Back" can bring the page back from the browser's cache as it was left, with the button off.
+  if (result === LEAVING) {
+    globalThis.addEventListener?.('pageshow', () => void (button.disabled = false), { once: true });
   }
 }
 
@@ -130,6 +140,7 @@ export function setupMenu(): void {
     void busy(button, async () => {
       await logout().catch(() => undefined);
       location.replace('/admin/login');
+      return LEAVING;
     });
   });
 }

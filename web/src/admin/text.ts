@@ -1,11 +1,23 @@
 // Admin page of one text: status, details, actions (open, edit, retry, delete) and the log of its last run.
 // While the text is being processed, the page refreshes itself until the status changes.
 
-import { canChange } from '../../../shared/new-text.ts';
+import { canChange, normalizeSource } from '../../../shared/new-text.ts';
 import type { TextDoc } from '../../../shared/text-doc.ts';
 import { translationModelLabel } from '../../../shared/translation-models.ts';
 import { textPageUrl } from '../api.ts';
-import { adminTextUrl, api, busy, element, formatDate, problemOf, requireLogin, setupMenu, showContent, statusLabel } from './common.ts';
+import {
+  adminTextUrl,
+  api,
+  busy,
+  element,
+  formatDate,
+  LEAVING,
+  problemOf,
+  requireLogin,
+  setupMenu,
+  showContent,
+  statusLabel,
+} from './common.ts';
 import { logLines } from './process-log.ts';
 
 const content = element<HTMLElement>('#content');
@@ -99,7 +111,8 @@ function render(text: TextDoc): void {
   const used = text.translation.model;
   if (chosen) detail('Модель перевода', translationModelLabel(chosen));
   if (used && used !== chosen) detail(chosen ? 'Перевела (запасная)' : 'Перевела', translationModelLabel(used));
-  detail('Символов', String(text.source.length));
+  // Older texts were stored with empty lines; counting the stored form gives the same number as the form shows.
+  detail('Символов', String(normalizeSource(text.source).length));
   if (text.status === 'ready') detail('Предложений', String(text.sentences.length));
 
   const changeable = canChange(text);
@@ -149,7 +162,7 @@ remove.addEventListener('click', () => {
     const answer = await api(`/api/admin/texts/${encodeURIComponent(id)}`, 'DELETE');
     if (answer.ok) {
       location.replace('/admin/');
-      return;
+      return LEAVING;
     }
     message.textContent = problemOf(answer);
   });

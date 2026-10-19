@@ -9,7 +9,7 @@ import {
   translationModelKey,
 } from '../../../shared/translation-models.ts';
 import { DEFAULT_VOICE, findVoice, VOICES, voiceKey } from '../../../shared/voices.ts';
-import { adminTextUrl, api, busy, element, problemOf, requireLogin, setupMenu, showContent } from './common.ts';
+import { adminTextUrl, api, busy, element, LEAVING, problemOf, requireLogin, setupMenu, showContent } from './common.ts';
 
 const form = element<HTMLFormElement>('#content');
 const heading = element<HTMLHeadingElement>('#heading');
@@ -119,35 +119,19 @@ form.addEventListener('submit', (event) => {
     const savedId = editingId ?? (answer.data.id as string | undefined);
     if ((answer.ok || answer.status === 502) && savedId) {
       location.assign(adminTextUrl(savedId));
-      return;
+      return LEAVING;
     }
     if (answer.status !== 401) message.textContent = problemOf(answer);
   });
 });
 
-/**
- * Removes empty lines from the text field as soon as they appear, however the text got there: pasted from the
- * menu, inserted by the phone keyboard's clipboard button, or typed with Enter twice. The field then shows the
- * text as it will be stored. The cursor keeps its place in the text.
- */
-function dropEmptyLinesInField(): void {
-  const value = textInput.value;
-  const tidy = dropEmptyLines(value);
-  if (tidy === value) return;
-  const cursor = dropEmptyLines(value.slice(0, textInput.selectionEnd)).length;
-  textInput.value = tidy;
-  textInput.setSelectionRange(cursor, cursor);
-}
-
-textInput.addEventListener('input', (event) => {
-  // While a phone keyboard is still composing a word, changing the field would break its input; the text is
-  // tidied when the composition ends.
-  if (!(event as InputEvent).isComposing) dropEmptyLinesInField();
-  updateCounter();
-});
-textInput.addEventListener('compositionend', () => {
-  dropEmptyLinesInField();
-  updateCounter();
+textInput.addEventListener('input', updateCounter);
+// Empty lines go when the admin leaves the field (also by tapping "Создать"), so the field shows the text
+// as it will be stored. Not while typing: changing the field under a phone keyboard can make the keyboard
+// insert its text a second time. The server drops them again when saving.
+textInput.addEventListener('blur', () => {
+  const tidy = dropEmptyLines(textInput.value);
+  if (tidy !== textInput.value) textInput.value = tidy;
 });
 
 for (const voice of VOICES) {

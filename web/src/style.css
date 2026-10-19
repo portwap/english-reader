@@ -94,13 +94,18 @@ a {
   line-height: 1.75;
 }
 
-/* One sentence per line; the whole line is the tap target. */
-.sentence {
+/* A paragraph as it was pasted: it starts on a new line, with no empty line before it. */
+.paragraph {
   margin: 0 0 0.35em;
-  padding: 2px 6px;
-  margin-left: -6px;
-  border-radius: 6px;
+}
+
+/* A sentence inside its paragraph is the tap target; its highlight follows the sentence across line breaks. */
+.sentence {
+  padding: 2px 0;
+  border-radius: 4px;
   cursor: pointer;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .sentence.selected {

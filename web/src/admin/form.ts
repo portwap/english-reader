@@ -1,6 +1,6 @@
 // Admin form for a text: /admin/new adds one, /admin/texts/<id>/edit edits one. After saving, the text's page opens.
 
-import { canChange, MAX_TEXT_LENGTH } from '../../../shared/new-text.ts';
+import { canChange, dropEmptyLines, MAX_TEXT_LENGTH, normalizeSource } from '../../../shared/new-text.ts';
 import type { TextDoc } from '../../../shared/text-doc.ts';
 import {
   DEFAULT_TRANSLATION_MODEL,
@@ -29,9 +29,9 @@ const MODEL_KEY = 'admin-translation-model';
 /** Id of the edited text from /admin/texts/<id>/edit, or null on /admin/new. */
 const editingId = decodeURIComponent(/^\/admin\/texts\/([^/]+)\/edit/.exec(location.pathname)?.[1] ?? '') || null;
 
-/** Updates the character counter under the text field. */
+/** Updates the character counter under the text field; it counts the text the way it will be stored. */
 function updateCounter(): void {
-  const length = textInput.value.trim().length;
+  const length = normalizeSource(textInput.value).length;
   counter.textContent = `${length} / ${MAX_TEXT_LENGTH}`;
   counter.classList.toggle('over', length > MAX_TEXT_LENGTH);
 }
@@ -86,7 +86,7 @@ async function loadForEdit(id: string): Promise<boolean> {
   }
   const doc = answer.data as unknown as TextDoc;
   titleInput.value = doc.title;
-  textInput.value = doc.source;
+  textInput.value = dropEmptyLines(doc.source);
   voiceSelect.value = voiceKey({ provider: doc.tts.provider, id: doc.tts.voice });
   // Texts saved before models could be chosen show the default one.
   const preferred = doc.translation.preferred;
@@ -125,7 +125,16 @@ form.addEventListener('submit', (event) => {
   });
 });
 
-textInput.addEventListener('input', updateCounter);
+textInput.addEventListener('input', (event) => {
+  // A pasted text loses its empty lines at once, so the field shows the text as it will be stored.
+  // The cursor stays right after the pasted part.
+  if ((event as InputEvent).inputType === 'insertFromPaste') {
+    const cursor = dropEmptyLines(textInput.value.slice(0, textInput.selectionEnd)).length;
+    textInput.value = dropEmptyLines(textInput.value);
+    textInput.setSelectionRange(cursor, cursor);
+  }
+  updateCounter();
+});
 
 for (const voice of VOICES) {
   const option = document.createElement('option');

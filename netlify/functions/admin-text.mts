@@ -56,7 +56,8 @@ export default async (request: Request, context: Context): Promise<Response> => 
   };
   // Voice and translation depend on the text, the voice and the model; a new title alone needs no new run.
   const sameVoice = key === voiceKey({ provider: doc.tts.provider, id: doc.tts.voice });
-  if (source === doc.source && sameVoice && modelKey === oldModel) {
+  // Older texts were stored with empty lines; the same text without them is not a change.
+  if (source === normalizeSource(doc.source) && sameVoice && modelKey === oldModel) {
     await saveDoc(edited);
     return Response.json(edited);
   }

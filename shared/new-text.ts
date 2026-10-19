@@ -44,12 +44,23 @@ export interface TextInput {
 }
 
 /**
- * Brings line endings to "\n" and trims the text, so positions are stable no matter where it was pasted from.
+ * Brings line endings to "\n" and drops empty lines, so each line is one paragraph and paragraphs follow
+ * each other with no empty line between them.
+ * @param text Text as pasted or typed.
+ * @returns The same text with "\n" line endings and no empty lines.
+ */
+export function dropEmptyLines(text: string): string {
+  return text.replace(/\r\n?/g, '\n').replace(/\n[ \t]*(?=\n)/g, '');
+}
+
+/**
+ * Brings a text to the form it is stored in: no empty lines, nothing at the ends. Positions in it stay stable
+ * no matter where the text was pasted from.
  * @param text Text as pasted.
- * @returns The same text with "\n" line endings and no spaces at the ends.
+ * @returns The text with "\n" line endings, no empty lines and no spaces at the ends.
  */
 export function normalizeSource(text: string): string {
-  return text.replace(/\r\n?/g, '\n').trim();
+  return dropEmptyLines(text).trim();
 }
 
 /**

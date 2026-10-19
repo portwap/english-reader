@@ -1,7 +1,16 @@
 // Tests for the rules of a new text and the document it starts as.
 
 import { describe, expect, it } from 'vitest';
-import { canChange, checkTextInput, ID_PATTERN, makeTextId, MAX_TEXT_LENGTH, newTextDoc, normalizeSource } from './new-text.ts';
+import {
+  canChange,
+  checkTextInput,
+  dropEmptyLines,
+  ID_PATTERN,
+  makeTextId,
+  MAX_TEXT_LENGTH,
+  newTextDoc,
+  normalizeSource,
+} from './new-text.ts';
 
 const good = {
   title: 'Anna',
@@ -73,6 +82,11 @@ describe('newTextDoc', () => {
 describe('normalizeSource', () => {
   it('turns Windows and old Mac line endings into \\n and trims the text', () => {
     expect(normalizeSource('  One.\r\nTwo.\rThree.  \n')).toBe('One.\nTwo.\nThree.');
+  });
+
+  it('drops empty lines between paragraphs, also lines of spaces, and keeps one line per paragraph', () => {
+    expect(normalizeSource('\n\nOne. Two.\n\n\nThree.\r\n  \r\nFour.\n')).toBe('One. Two.\nThree.\nFour.');
+    expect(dropEmptyLines('One.\n\nTwo.\n')).toBe('One.\nTwo.\n');
   });
 });
 

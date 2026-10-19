@@ -1,4 +1,4 @@
-// Text page: one sentence per line, with word highlight while reading. Tapping a sentence selects it;
+// Text page: the text in its paragraphs, with word highlight while reading. Tapping a sentence selects it;
 // the bottom bar plays the whole text or the selected sentence, and shows the selected sentence's translation.
 
 import type { DocWord, TextDoc } from '../../shared/text-doc.ts';
@@ -86,25 +86,35 @@ function keepInView(word: HTMLElement): void {
 function showText(doc: TextDoc, player: Player): () => void {
   const words: DocWord[] = doc.sentences.flatMap((sentence) => sentence.words);
   const wordSpans: HTMLSpanElement[] = [];
-  const sentenceLines: HTMLElement[] = [];
+  const sentenceSpans: HTMLElement[] = [];
 
-  // Each sentence is its own line, with no gaps between paragraphs: the text reads as one list of sentences.
+  // Paragraphs are shown as they were pasted; the sentences of a paragraph follow each other in it.
+  let paragraph: HTMLParagraphElement | null = null;
+  let paragraphNumber = -1;
   for (const [s, sentence] of doc.sentences.entries()) {
-    const line = document.createElement('p');
-    line.className = 'sentence';
-    line.dataset.index = String(s);
+    if (!paragraph || sentence.paragraph !== paragraphNumber) {
+      paragraph = document.createElement('p');
+      paragraph.className = 'paragraph';
+      textBox.append(paragraph);
+      paragraphNumber = sentence.paragraph;
+    } else {
+      paragraph.append(' ');
+    }
+    const sentenceSpan = document.createElement('span');
+    sentenceSpan.className = 'sentence';
+    sentenceSpan.dataset.index = String(s);
     for (const part of sentenceParts(sentence)) {
       if (!part.word) {
-        line.append(part.text);
+        sentenceSpan.append(part.text);
         continue;
       }
       const wordSpan = document.createElement('span');
       wordSpan.textContent = part.text;
       wordSpans.push(wordSpan);
-      line.append(wordSpan);
+      sentenceSpan.append(wordSpan);
     }
-    sentenceLines.push(line);
-    textBox.append(line);
+    sentenceSpans.push(sentenceSpan);
+    paragraph.append(sentenceSpan);
   }
 
   let litWord = -1;
@@ -149,9 +159,9 @@ function showText(doc: TextDoc, player: Player): () => void {
   function select(index: number): void {
     // A translation belongs to one sentence: choosing another sentence hides it until asked again.
     if (index !== selected) showTranslation = false;
-    sentenceLines[selected]?.classList.remove('selected');
+    sentenceSpans[selected]?.classList.remove('selected');
     selected = index;
-    sentenceLines[index]?.classList.add('selected');
+    sentenceSpans[index]?.classList.add('selected');
     playSentenceButton.disabled = index < 0 || player.duration === 0;
     translateButton.disabled = index < 0;
     updateTranslation();
@@ -216,11 +226,11 @@ function showText(doc: TextDoc, player: Player): () => void {
   });
 
   textBox.addEventListener('click', (event) => {
-    const line = (event.target as HTMLElement).closest<HTMLElement>('.sentence');
-    if (!line) return;
+    const sentenceSpan = (event.target as HTMLElement).closest<HTMLElement>('.sentence');
+    if (!sentenceSpan) return;
     // Tapping the text stops any playback, so the selection and the sound never disagree.
     player.stop();
-    select(Number(line.dataset.index));
+    select(Number(sentenceSpan.dataset.index));
   });
 
   return () => {

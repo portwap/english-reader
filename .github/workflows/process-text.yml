@@ -86,7 +86,10 @@ jobs:
       - name: Dry run on the sample text
         if: github.event_name == 'pull_request'
         run: |
-          curl -sf https://simple-english-reader.netlify.app/api/texts/her-deepest-secret-b95b21 | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>require("fs").writeFileSync("/tmp/long.txt",JSON.parse(s).source))'
+          curl -sS -L -A "Mozilla/5.0" -o /tmp/long.json -w "HTTP %{http_code}
+" https://simple-english-reader.netlify.app/api/texts/her-deepest-secret-b95b21
+          head -c 200 /tmp/long.json; echo
+          node -e 'require("fs").writeFileSync("/tmp/long.txt",JSON.parse(require("fs").readFileSync("/tmp/long.json","utf8")).source)'
           node pipeline/process.ts --dry-run out/dry-run --title "Long" --text-file /tmp/long.txt
 
       - name: Upload the dry run result

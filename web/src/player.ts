@@ -1,5 +1,5 @@
-// Plays parts of one recording through the Web Audio API: the whole text, a sentence or a single word.
-// Web Audio starts and stops at exact times, which an <audio> element cannot do for short word slices.
+// Plays parts of one recording through the Web Audio API: the whole text or one sentence.
+// Web Audio starts and stops at exact times, which an <audio> element cannot do for short slices.
 
 /** Plays any part of one decoded recording and reports the playing position. */
 export class Player {

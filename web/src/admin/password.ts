@@ -1,7 +1,7 @@
 // Admin password page: sets the password from an invite link or a reset link, or changes it when logged in.
 
 import { acceptInvite, AuthError, getUser, handleAuthCallback, login, updateUser } from '@netlify/identity';
-import { busy, element, goToLogin, showContent } from './common.ts';
+import { busy, element, goToLogin, LEAVING, showContent } from './common.ts';
 
 const form = element<HTMLFormElement>('#content');
 const heading = element<HTMLHeadingElement>('#heading');
@@ -63,6 +63,7 @@ function setup(mode: Mode): void {
         return;
       }
       location.replace('/admin/');
+      return LEAVING;
     });
   });
   showContent(form);

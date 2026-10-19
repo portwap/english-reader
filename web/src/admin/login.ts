@@ -1,7 +1,7 @@
 // Admin login page: email and password; afterwards back to the admin page that was asked for.
 
 import { AuthError, getUser, login } from '@netlify/identity';
-import { busy, element, safeNext } from './common.ts';
+import { busy, element, LEAVING, safeNext } from './common.ts';
 
 const form = element<HTMLFormElement>('#form');
 const email = element<HTMLInputElement>('#email');
@@ -31,5 +31,6 @@ form.addEventListener('submit', (event) => {
       return;
     }
     location.replace(next);
+    return LEAVING;
   });
 });

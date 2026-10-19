@@ -88,16 +88,8 @@ function showText(doc: TextDoc, player: Player): () => void {
   const wordSpans: HTMLSpanElement[] = [];
   const sentenceLines: HTMLElement[] = [];
 
-  // Each sentence is its own line; a paragraph is a group of lines with a gap after it.
-  let paragraph: HTMLDivElement | null = null;
-  let paragraphNumber = -1;
+  // Each sentence is its own line, with no gaps between paragraphs: the text reads as one list of sentences.
   for (const [s, sentence] of doc.sentences.entries()) {
-    if (sentence.paragraph !== paragraphNumber || !paragraph) {
-      paragraph = document.createElement('div');
-      paragraph.className = 'paragraph';
-      textBox.append(paragraph);
-      paragraphNumber = sentence.paragraph;
-    }
     const line = document.createElement('p');
     line.className = 'sentence';
     line.dataset.index = String(s);
@@ -112,7 +104,7 @@ function showText(doc: TextDoc, player: Player): () => void {
       line.append(wordSpan);
     }
     sentenceLines.push(line);
-    paragraph.append(line);
+    textBox.append(line);
   }
 
   let litWord = -1;

@@ -63,7 +63,9 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
   const doc: TextDoc = {
     ...input,
     status: 'processing',
-    updatedAt: now(),
+    // A text the admin sent is already "processing" since the admin pressed the button; that moment stays,
+    // so the admin page counts the wait from it and "Retry" for a stuck text comes at the right time.
+    updatedAt: (input.status === 'processing' && input.updatedAt) || now(),
     // The admin's choice of model stays; the model that actually translates is filled in when ready.
     translation: { ...input.translation, provider: deps.translator.id, model: '' },
     audio: '',

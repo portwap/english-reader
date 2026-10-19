@@ -94,10 +94,6 @@ a {
   line-height: 1.75;
 }
 
-.paragraph {
-  margin: 0 0 1.4em;
-}
-
 /* One sentence per line; the whole line is the tap target. */
 .sentence {
   margin: 0 0 0.35em;
@@ -486,6 +482,10 @@ button.link {
   display: grid;
   grid-template-columns: 4.5em 1fr;
   gap: 8px;
+}
+
+.process-log li.whole {
+  display: block;
 }
 
 .log-time {

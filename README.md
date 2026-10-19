@@ -16,7 +16,7 @@ The architecture, the data contract and the stages are in [docs/PLAN.md](docs/PL
 2. A Netlify function saves the text in Netlify Blobs with status `processing` and starts the `process-text` workflow on GitHub Actions with the text id.
 3. The workflow voices the text with Kokoro, translates it with OpenRouter, and saves the result (JSON and mp3) with status `ready`, or status `error` with the reason. The text's admin page (`/admin/texts/<id>`) shows the status and every step of the run as it happens: which model is asked, why an attempt failed, what comes next.
 
-If the chosen model fails, the others from `shared/translation-models.ts` follow. A broken answer, a timeout (5 minutes) or a server error gets one more try with the same model; a rate limit (429) or a refusal moves to the next model at once. The whole translation may take up to 15 minutes.
+A long text is translated in parts of up to 20 sentences at the same time, each with the whole text as context. If the chosen model fails, the others from `shared/translation-models.ts` follow, each translating the whole text. A broken answer, a timeout (5 minutes) or a server error gets one more try with the same model; a rate limit (429) or a refusal moves to the next model at once. The whole translation may take up to 15 minutes.
 
 Lists of texts (the home page and `/admin`) are read from one stored index of all texts, which every writer updates safely.
 

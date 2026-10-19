@@ -1,7 +1,7 @@
 // Turns the processing log of a text into short Russian lines for the admin page.
 // Kept apart from the page code, so the wording can be tested without a browser.
 
-import type { FailureReason, AfterFailure, ProcessEvent } from '../../../shared/text-doc.ts';
+import type { AfterFailure, FailureReason, PartOf, ProcessEvent } from '../../../shared/text-doc.ts';
 import { translationModelLabel } from '../../../shared/translation-models.ts';
 
 /** One line of the log as the admin page shows it. */
@@ -50,6 +50,28 @@ function reasonText(reason: FailureReason, seconds: number, status: number | und
   }
 }
 
+/**
+ * Names a part of a long text.
+ * @param where The part and how many there are; missing for a text sent in one request.
+ * @returns For example ", часть 2 из 4", or nothing.
+ */
+function partText(where: Partial<PartOf>): string {
+  return where.part && where.parts && where.parts > 1 ? `, часть ${where.part} из ${where.parts}` : '';
+}
+
+/**
+ * Chooses the Russian word for "parts" after a number.
+ * @param count How many parts.
+ * @returns "часть", "части" or "частей".
+ */
+function partsWord(count: number): string {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (last === 1 && lastTwo !== 11) return 'часть';
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return 'части';
+  return 'частей';
+}
+
 /** What the translator did next, as the admin page says it. */
 const AFTER_FAILURE: Record<AfterFailure, string> = {
   retry: 'повтор',
@@ -69,11 +91,19 @@ export function describeEvent(event: ProcessEvent): { text: string; detail: stri
       return { text: 'Обработка началась', detail: '' };
     case 'voiced':
       return { text: `Озвучка готова за ${formatDuration(event.seconds)}`, detail: '' };
-    case 'attempt':
-      return { text: `Перевод: ${translationModelLabel(event.model)}, попытка ${event.attempt}`, detail: '' };
+    case 'attempt': {
+      const model = translationModelLabel(event.model);
+      // The first attempts of all parts start together, so they are told as one line.
+      if (event.attempt === 1 && event.parts && event.parts > 1) {
+        return { text: `Перевод: ${model}, ${event.parts} ${partsWord(event.parts)} одновременно`, detail: '' };
+      }
+      return { text: `Перевод: ${model}${partText(event)}, попытка ${event.attempt}`, detail: '' };
+    }
     case 'failed':
       return {
-        text: `${translationModelLabel(event.model)}: ${reasonText(event.reason, event.seconds, event.status)} → ${AFTER_FAILURE[event.then]}`,
+        text:
+          `${translationModelLabel(event.model)}${partText(event)}: ` +
+          `${reasonText(event.reason, event.seconds, event.status)} → ${AFTER_FAILURE[event.then]}`,
         detail: event.detail,
       };
     case 'translated':
@@ -96,7 +126,9 @@ export function describeEvent(event: ProcessEvent): { text: string; detail: stri
  * @returns One line per step, in order.
  */
 export function logLines(log: ProcessEvent[]): LogLine[] {
-  return log.map((event) => ({
+  // The first part's first attempt stands for all parts (see describeEvent).
+  const shown = log.filter((event) => !(event.type === 'attempt' && event.attempt === 1 && (event.part ?? 1) > 1));
+  return shown.map((event) => ({
     time: new Date(event.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     ...describeEvent(event),
   }));

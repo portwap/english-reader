@@ -92,6 +92,12 @@ describe('processText', () => {
     }
   });
 
+  it('keeps the time the admin started processing, so the wait is counted from it', async () => {
+    const { all, saved } = deps();
+    await processText(waiting, all);
+    expect(saved[0]?.updatedAt).toBe('2026-10-13T10:00:00.000Z');
+  });
+
   it('replaces the results and the error of an earlier run', async () => {
     const failedBefore: TextDoc = { ...waiting, status: 'error', error: 'old problem', audio: 'old.mp3' };
     const { all, saved } = deps();

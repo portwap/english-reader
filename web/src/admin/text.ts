@@ -56,9 +56,6 @@ function renderLog(text: TextDoc): void {
   logList.replaceChildren(
     ...lines.map((line) => {
       const item = document.createElement('li');
-      const time = document.createElement('span');
-      time.className = 'log-time';
-      time.textContent = line.time;
       const body = document.createElement('div');
       const label = document.createElement('div');
       label.textContent = line.text;
@@ -69,7 +66,16 @@ function renderLog(text: TextDoc): void {
         technical.textContent = line.detail;
         body.append(technical);
       }
-      item.append(time, body);
+      // A line without a time (waiting for GitHub) takes the whole width instead of leaving the time column empty.
+      if (line.time) {
+        const time = document.createElement('span');
+        time.className = 'log-time';
+        time.textContent = line.time;
+        item.append(time);
+      } else {
+        item.className = 'whole';
+      }
+      item.append(body);
       return item;
     }),
   );

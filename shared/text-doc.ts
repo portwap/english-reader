@@ -63,12 +63,20 @@ export type FailureReason = 'timeout' | 'rate-limited' | 'refused' | 'server' | 
 /** What the translator does after a failed attempt. */
 export type AfterFailure = 'retry' | 'next-model' | 'no-models-left' | 'no-time-left';
 
+/** Which part of a text a translation request is for; a long text is translated in parts at the same time. */
+export interface PartOf {
+  /** Number of the part, from 1. */
+  part: number;
+  /** How many parts the text has; 1 for a short text. */
+  parts: number;
+}
+
 /** One step of a processing run, written as it happens so the admin can follow the run. */
 export type ProcessEvent = { at: string } & (
   | { type: 'started' }
   | { type: 'voiced'; seconds: number }
-  | { type: 'attempt'; model: string; attempt: number }
-  | {
+  | ({ type: 'attempt'; model: string; attempt: number } & Partial<PartOf>)
+  | ({
       type: 'failed';
       model: string;
       attempt: number;
@@ -79,7 +87,7 @@ export type ProcessEvent = { at: string } & (
       then: AfterFailure;
       /** Short technical detail in English, such as the start of a broken answer. */
       detail: string;
-    }
+    } & Partial<PartOf>)
   | { type: 'translated'; model: string; seconds: number }
   | { type: 'ready' }
   | { type: 'error' }

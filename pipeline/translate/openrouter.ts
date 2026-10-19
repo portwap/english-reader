@@ -1,4 +1,5 @@
-// OpenRouter translation adapter: one request per text, with a retry and fallback models, within a time limit.
+// OpenRouter translation adapter: a text is translated in parts at the same time, each part with the whole text
+// as context; with a retry and fallback models, within a time limit.
 // This is the only file that knows how OpenRouter is called.
 
 import type { AfterFailure, FailureReason } from '../../shared/text-doc.ts';
@@ -7,14 +8,15 @@ import type { TranslateOptions, TranslationResult, Translator } from './translat
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 const SYSTEM_PROMPT = `You translate English texts into Russian for people who are learning English.
-You get the whole text and its sentences, numbered. Translate every numbered sentence into natural, correct Russian.
+You get the whole text and some of its sentences, numbered by their place in the text.
+Translate every numbered sentence into natural, correct Russian, and only those.
 Use the whole text as context: speakers, pronouns, tense, names and terms must stay consistent across sentences.
 Translate the meaning the way a skilled Russian translator would, not word for word: idioms and phrasal verbs
 must sound like natural Russian (for example, "make up your mind" is "решиться", not "составить свой ум").
 Follow Russian punctuation, not English: quotation marks «» (with „“ inside them), Russian rules for direct speech
 («Текст», — сказал он. / «Текст, — сказал он, — текст».), and the long dash where Russian needs it.
-Give exactly one translation per numbered sentence: do not merge, split, skip or add sentences.
-Answer with JSON only, in this form: {"translations":[{"n":1,"ru":"..."},{"n":2,"ru":"..."}]}`;
+Give exactly one translation per numbered sentence, with the same number: do not merge, split, skip or add sentences.
+Answer with JSON only, in this form: {"translations":[{"n":21,"ru":"..."},{"n":22,"ru":"..."}]}`;
 
 /** JSON schema of the answer, so models that support structured output return exactly this shape. */
 const ANSWER_SCHEMA = {
@@ -49,8 +51,17 @@ export interface OpenRouterOptions {
   fetch?: typeof globalThis.fetch;
 }
 
-/** Attempts per model: the first one and one retry. */
+/** Attempts per part and model: the first one and one retry. */
 const ATTEMPTS_PER_MODEL = 2;
+
+/**
+ * Most sentences in one request. Models lose count in long lists: on a 70-sentence text they returned 32 and 13
+ * translations and stopped, while texts of 9 and 24 sentences were translated at the first try.
+ */
+export const PART_SIZE = 20;
+
+/** A sentence with this many words or more must come back with Russian letters; shorter ones may be names or numbers. */
+const WORDS_THAT_NEED_RUSSIAN = 3;
 
 /**
  * Failures worth one more try with the same model, because they are often one-off.
@@ -58,25 +69,51 @@ const ATTEMPTS_PER_MODEL = 2;
  */
 const RETRYABLE: ReadonlySet<FailureReason> = new Set(['timeout', 'server', 'bad-answer']);
 
-/**
- * Builds the user message: the whole text for context, then the numbered sentences.
- * @param fullText The whole English text.
- * @param sentences Its sentences, in order.
- * @returns The message text.
- */
-export function buildPrompt(fullText: string, sentences: string[]): string {
-  const numbered = sentences.map((sentence, i) => `${i + 1}. ${sentence}`).join('\n');
-  return `Whole text:\n"""\n${fullText}\n"""\n\nSentences to translate (${sentences.length}):\n${numbered}`;
+/** Some sentences of a text, sent in one request. */
+export interface TextPart {
+  /** Number of the first sentence in the whole text, from 1. */
+  first: number;
+  sentences: string[];
 }
 
 /**
- * Reads the model's answer and turns it into one translation per sentence.
- * @param content The text of the model's answer.
- * @param count How many sentences were sent.
- * @returns Translations in sentence order.
- * @throws If the answer is not the expected JSON or does not cover every sentence once.
+ * Splits the sentences into parts of at most PART_SIZE, of nearly equal size.
+ * @param sentences All sentences of a text.
+ * @returns The parts in order; one part for a short text.
  */
-export function parseAnswer(content: string, count: number): string[] {
+export function splitIntoParts(sentences: string[]): TextPart[] {
+  const count = Math.max(1, Math.ceil(sentences.length / PART_SIZE));
+  const size = Math.ceil(sentences.length / count);
+  return Array.from({ length: count }, (_, i) => ({
+    first: i * size + 1,
+    sentences: sentences.slice(i * size, (i + 1) * size),
+  }));
+}
+
+/**
+ * Builds the user message: the whole text for context, then the sentences of one part, numbered by their place.
+ * @param fullText The whole English text.
+ * @param part The sentences to translate.
+ * @returns The message text.
+ */
+export function buildPrompt(fullText: string, part: TextPart): string {
+  const numbered = part.sentences.map((sentence, i) => `${part.first + i}. ${sentence}`).join('\n');
+  const last = part.first + part.sentences.length - 1;
+  return (
+    `Whole text:\n"""\n${fullText}\n"""\n\n` +
+    `Sentences to translate (${part.sentences.length}, numbers ${part.first}–${last}):\n${numbered}`
+  );
+}
+
+/**
+ * Reads the model's answer and turns it into one translation per sentence of the part.
+ * @param content The text of the model's answer.
+ * @param part The sentences that were sent.
+ * @returns Translations in sentence order.
+ * @throws If the answer is not the expected JSON, does not cover every sentence once, or leaves a sentence
+ *   in English.
+ */
+export function parseAnswer(content: string, part: TextPart): string[] {
   // Some models wrap JSON in a code block or add a word before it; take the outermost object.
   const first = content.indexOf('{');
   const last = content.lastIndexOf('}');
@@ -90,11 +127,17 @@ export function parseAnswer(content: string, count: number): string[] {
     if (byNumber.has(item.n)) throw new Error(`sentence ${item.n} is translated twice`);
     byNumber.set(item.n, item.ru.trim());
   }
-  const translations = Array.from({ length: count }, (_, i) => byNumber.get(i + 1) ?? '');
-  // Extra numbers (outside 1..count) also make the sizes differ, so they are caught here too.
+  const count = part.sentences.length;
+  const translations = Array.from({ length: count }, (_, i) => byNumber.get(part.first + i) ?? '');
+  // Extra numbers (outside the part) also make the sizes differ, so they are caught here too.
   if (byNumber.size !== count) throw new Error(`${byNumber.size} translations for ${count} sentences`);
-  const empty = translations.flatMap((translation, i) => (translation ? [] : [i + 1]));
+  const empty = translations.flatMap((translation, i) => (translation ? [] : [part.first + i]));
   if (empty.length > 0) throw new Error(`no translation for sentence ${empty.join(', ')}`);
+  const english = translations.flatMap((translation, i) => {
+    const words = part.sentences[i]?.match(/[A-Za-z]+/g)?.length ?? 0;
+    return words >= WORDS_THAT_NEED_RUSSIAN && !/[а-яё]/i.test(translation) ? [part.first + i] : [];
+  });
+  if (english.length > 0) throw new Error(`sentence ${english.join(', ')} came back without Russian letters`);
   return translations;
 }
 
@@ -109,6 +152,15 @@ class ApiError extends Error {
 
 /** An answer that came back but cannot be used: not JSON, cut off, or not one translation per sentence. */
 class BadAnswer extends Error {}
+
+/** A model gave up on a part; says what the translation does next. */
+class ModelFailed extends Error {
+  then: AfterFailure;
+  constructor(then: AfterFailure) {
+    super(then);
+    this.then = then;
+  }
+}
 
 /**
  * Sorts a failed attempt into a reason the admin page can show.
@@ -144,16 +196,16 @@ export function createOpenRouter(options: OpenRouterOptions): Translator {
    * Sends one request to one model.
    * @param model Model id.
    * @param fullText The whole text.
-   * @param sentences Its sentences.
-   * @param waitMs Longest wait for the answer.
+   * @param part The sentences to translate.
+   * @param signal Stops the request when its time is up or another part has failed.
    * @param sessionId Groups the requests of one text in OpenRouter's logs.
-   * @returns One translation per sentence.
+   * @returns One translation per sentence of the part.
    */
   async function ask(
     model: string,
     fullText: string,
-    sentences: string[],
-    waitMs: number,
+    part: TextPart,
+    signal: AbortSignal,
     sessionId: string | undefined,
   ): Promise<string[]> {
     const response = await doFetch(API_URL, {
@@ -167,7 +219,7 @@ export function createOpenRouter(options: OpenRouterOptions): Translator {
         model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildPrompt(fullText, sentences) },
+          { role: 'user', content: buildPrompt(fullText, part) },
         ],
         temperature: 0.2,
         // A little reasoning helps with context; leaving it out of the answer keeps the JSON clean.
@@ -178,7 +230,7 @@ export function createOpenRouter(options: OpenRouterOptions): Translator {
         },
         ...(sessionId ? { session_id: sessionId } : {}),
       }),
-      signal: AbortSignal.timeout(waitMs),
+      signal,
     });
     const body = await response.text();
     if (!response.ok) throw new ApiError(response.status, `HTTP ${response.status}: ${body.slice(0, 300)}`);
@@ -203,7 +255,7 @@ export function createOpenRouter(options: OpenRouterOptions): Translator {
     if (choice?.finish_reason === 'length') throw new BadAnswer('the answer was cut off (too long)');
     const content = choice?.message?.content ?? '';
     try {
-      return parseAnswer(content, sentences.length);
+      return parseAnswer(content, part);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new BadAnswer(`${message}; the answer starts with ${JSON.stringify(content.slice(0, 120))}`);
@@ -214,7 +266,9 @@ export function createOpenRouter(options: OpenRouterOptions): Translator {
     id: 'openrouter',
 
     /**
-     * Translates the sentences, trying each model in turn until one gives a usable answer or time runs out.
+     * Translates the sentences in parts at the same time. One model translates the whole text: if a part fails
+     * even after its retry, the other parts are stopped and the next model starts over, so a text is never
+     * translated by two models.
      * @param fullText The whole English text.
      * @param sentences Its sentences, in order.
      * @param translateOptions Session id and progress reports.
@@ -228,34 +282,66 @@ export function createOpenRouter(options: OpenRouterOptions): Translator {
     ): Promise<TranslationResult> {
       const report = translateOptions.onEvent ?? (() => {});
       const deadline = Date.now() + budgetMs;
-      for (const [index, model] of models.entries()) {
-        for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
-          report({ type: 'attempt', model, attempt });
+      const parts = splitIntoParts(sentences);
+
+      /**
+       * Translates one part with one model, with one retry when it makes sense.
+       * @param model Model id.
+       * @param isLast Whether no model comes after this one.
+       * @param index Place of the part, from 0.
+       * @param stop Aborted when another part of this model has failed.
+       * @returns The part's translations.
+       * @throws ModelFailed when this model gives up on the part; the stop reason when stopped.
+       */
+      async function translatePart(model: string, isLast: boolean, index: number, stop: AbortSignal): Promise<string[]> {
+        const part = parts[index] as TextPart;
+        // The part is named only when there are several, so a short text's log stays as simple as before.
+        const where = parts.length > 1 ? { part: index + 1, parts: parts.length } : {};
+        for (let attempt = 1; ; attempt++) {
+          stop.throwIfAborted();
+          report({ type: 'attempt', model, attempt, ...where });
           const started = Date.now();
           try {
             const waitMs = Math.max(1, Math.min(timeoutMs, deadline - started));
-            return { translations: await ask(model, fullText, sentences, waitMs, translateOptions.sessionId), model };
+            const signal = AbortSignal.any([AbortSignal.timeout(waitMs), stop]);
+            return await ask(model, fullText, part, signal, translateOptions.sessionId);
           } catch (error) {
+            // Another part failed and this one was stopped: nothing to report, the next model starts over.
+            if (stop.aborted) throw error;
             const { reason, status } = classify(error);
             const retry = attempt < ATTEMPTS_PER_MODEL && RETRYABLE.has(reason);
             let then: AfterFailure = retry ? 'retry' : 'next-model';
-            if (!retry && index === models.length - 1) then = 'no-models-left';
+            if (!retry && isLast) then = 'no-models-left';
             else if (Date.now() + (retry ? retryDelayMs : 0) >= deadline) then = 'no-time-left';
             report({
               type: 'failed',
               model,
               attempt,
+              ...where,
               seconds: Math.round((Date.now() - started) / 100) / 10,
               reason,
               ...(status === undefined ? {} : { status }),
               then,
               detail: (error instanceof Error ? error.message : String(error)).slice(0, 300),
             });
-            if (then === 'no-models-left') throw new Error('Translation failed: no model gave a usable answer.');
-            if (then === 'no-time-left') throw new Error('Translation failed: the time for translation ran out.');
-            if (!retry) break;
+            if (then !== 'retry') throw new ModelFailed(then);
             await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
           }
+        }
+      }
+
+      for (const [index, model] of models.entries()) {
+        const stop = new AbortController();
+        try {
+          const translated = await Promise.all(
+            parts.map((_, p) => translatePart(model, index === models.length - 1, p, stop.signal)),
+          );
+          return { translations: translated.flat(), model };
+        } catch (error) {
+          stop.abort();
+          const then = error instanceof ModelFailed ? error.then : 'next-model';
+          if (then === 'no-models-left') throw new Error('Translation failed: no model gave a usable answer.');
+          if (then === 'no-time-left') throw new Error('Translation failed: the time for translation ran out.');
         }
       }
       throw new Error('Translation failed: there are no models to try.');

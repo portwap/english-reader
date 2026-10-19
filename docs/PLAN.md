@@ -82,7 +82,9 @@ interface Translator {
 }
 ```
 
-OpenRouter adapter: one request per text (the whole text plus numbered sentences), JSON answer. Check: exactly one non-empty translation per sentence. The chosen model goes first, then the other models in list order:
+OpenRouter adapter: the sentences go in parts of at most 20, all parts at the same time; each request holds the whole text for context and the part's sentences, numbered by their place in the text. JSON answer. Parts came after both models lost count on a 70-sentence text (they returned 32 and 13 translations), while texts of 9 and 24 sentences worked at the first try; shorter answers also come faster. Check: exactly one non-empty translation per sentence, and Russian letters in the translation of every sentence of three words or more (a sentence left in English). A translation moved to the wrong number cannot be caught reliably; smaller parts make it less likely.
+
+One model translates the whole text: if a part fails even after its retry, the other parts are stopped and the next model starts over. The chosen model goes first, then the other models in list order:
 
 - a broken answer, a timeout or a server error: one more try with the same model (on 2026-10-19 a second try after a timeout worked);
 - a rate limit (429) or another refusal: the next model at once, since these do not pass in seconds;
@@ -165,7 +167,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 **2b. Site**
 
 - Read functions: `GET /api/texts`, `GET /api/texts/:id`, `GET /api/audio/:id` (the mp3 is streamed).
-- Home page: the ready texts, ten at a time with "Показать ещё". Text page at `/texts/<id>`: one sentence per line, paragraphs separated by a gap. Tapping a sentence selects it. A bottom bar plays the whole text (pause and continue; the paused word stays marked; the page follows the highlighted word) or the selected sentence (with up to 0.15 s of margin, never into the next sentence), and shows the selected sentence's translation. Reading the whole text clears the selection and highlights only the word being spoken. Single words are not played: Kokoro's word boundaries are not exact enough for clean slices. Playback through the Web Audio API at 24 kHz.
+- Home page: the ready texts, ten at a time with "Показать ещё". Text page at `/texts/<id>`: one sentence per line, with no gaps between paragraphs (paragraphs stay in the data). Tapping a sentence selects it. A bottom bar plays the whole text (pause and continue; the paused word stays marked; the page follows the highlighted word) or the selected sentence (with up to 0.15 s of margin, never into the next sentence), and shows the selected sentence's translation. Reading the whole text clears the selection and highlights only the word being spoken. Single words are not played: Kokoro's word boundaries are not exact enough for clean slices. Playback through the Web Audio API at 24 kHz.
 - Pages are built with Vite into `web/dist`; in development, `/api` is sent to a deployed site (`API_ORIGIN`).
 - Simple, clean design; Android phones first, desktop too.
 - **Done when:** 2 real texts are added through the workflow and work on the site on an Android phone; tests pass; processing time is measured (2a: 21–34 s of processing, 2–2.5 min per workflow run).

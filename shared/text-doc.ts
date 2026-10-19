@@ -53,7 +53,44 @@ export interface TextDoc {
   audio: string;
   /** Empty until the text is ready. */
   sentences: DocSentence[];
+  /** What the last run did, step by step, for the admin page; missing until a run starts. */
+  log?: ProcessEvent[];
 }
+
+/** Why one translation attempt failed. */
+export type FailureReason = 'timeout' | 'rate-limited' | 'refused' | 'server' | 'bad-answer';
+
+/** What the translator does after a failed attempt. */
+export type AfterFailure = 'retry' | 'next-model' | 'no-models-left' | 'no-time-left';
+
+/** One step of a processing run, written as it happens so the admin can follow the run. */
+export type ProcessEvent = { at: string } & (
+  | { type: 'started' }
+  | { type: 'voiced'; seconds: number }
+  | { type: 'attempt'; model: string; attempt: number }
+  | {
+      type: 'failed';
+      model: string;
+      attempt: number;
+      seconds: number;
+      reason: FailureReason;
+      /** HTTP status, when the service answered with an error. */
+      status?: number;
+      then: AfterFailure;
+      /** Short technical detail in English, such as the start of a broken answer. */
+      detail: string;
+    }
+  | { type: 'translated'; model: string; seconds: number }
+  | { type: 'ready' }
+  | { type: 'error' }
+  | { type: 'stopped' }
+);
+
+/** Removes the time from each kind of event separately, so the kinds stay apart. */
+type WithoutTime<E> = E extends unknown ? Omit<E, 'at'> : never;
+
+/** An event before its time is added. */
+export type ProcessStep = WithoutTime<ProcessEvent>;
 
 /** Short facts about a text, stored next to it so the list of texts loads without reading every text. */
 export interface TextSummary {

@@ -88,7 +88,8 @@ describe('canChange', () => {
     expect(canChange({ status: 'processing', createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-14T09:50:00Z' }, now)).toBe(false);
   });
 
-  it('allows changes once a processing text is stuck for more than 20 minutes', () => {
+  it('allows changes once a processing text is stuck for more than 25 minutes', () => {
+    expect(canChange({ status: 'processing', createdAt: '2026-10-14T09:38:00Z' }, now)).toBe(false);
     expect(canChange({ status: 'processing', createdAt: '2026-10-14T09:30:00Z' }, now)).toBe(true);
   });
 });

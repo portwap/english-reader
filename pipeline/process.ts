@@ -4,7 +4,9 @@
 //   node pipeline/process.ts --id <text id>
 //     Processes a text the admin saved in storage. Needs NETLIFY_SITE_ID and NETLIFY_AUTH_TOKEN.
 //   node pipeline/process.ts --dry-run <out-folder> --title "Title" --text-file text.txt [--voice kokoro:am_liam]
-//     Processes a local file and writes the JSON and mp3 to a folder instead of storage.
+//     [--model openrouter:<model id>]
+//     Processes a local file and writes the JSON and mp3 to a folder instead of storage. --model checks how
+//     a model from shared/translation-models.ts translates; the others still follow it if it fails.
 // The voice and the translation model come with each text; the only setting is the OPENROUTER_API_KEY secret.
 
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -59,6 +61,7 @@ async function main(): Promise<void> {
       title: { type: 'string' },
       'text-file': { type: 'string' },
       voice: { type: 'string' },
+      model: { type: 'string' },
     },
   });
 
@@ -77,7 +80,7 @@ async function main(): Promise<void> {
       title: values.title,
       text: await readFile(values['text-file'], 'utf8'),
       voice: values.voice ?? DEFAULT_VOICE,
-      translationModel: DEFAULT_TRANSLATION_MODEL,
+      translationModel: values.model ?? DEFAULT_TRANSLATION_MODEL,
     };
     const problems = checkTextInput(input);
     if (problems.length > 0) throw new Error(problems.join(' '));
@@ -89,7 +92,8 @@ async function main(): Promise<void> {
   } else {
     throw new Error(
       'Usage: node pipeline/process.ts --id <text id>\n' +
-        '   or: node pipeline/process.ts --dry-run <out-folder> --title "Title" --text-file text.txt [--voice kokoro:am_liam]',
+        '   or: node pipeline/process.ts --dry-run <out-folder> --title "Title" --text-file text.txt ' +
+        '[--voice kokoro:am_liam] [--model openrouter:<model id>]',
     );
   }
 
@@ -102,7 +106,8 @@ async function main(): Promise<void> {
   } catch (error) {
     // Save the real reason now; otherwise the text would only get the general "run stopped" message.
     const message = error instanceof Error ? error.message : String(error);
-    await storage.saveDoc({ ...doc, status: 'error', error: message, updatedAt: new Date().toISOString() });
+    const at = new Date().toISOString();
+    await storage.saveDoc({ ...doc, status: 'error', error: message, updatedAt: at, log: [{ type: 'error', at }] });
     throw error;
   }
 
@@ -111,6 +116,8 @@ async function main(): Promise<void> {
       ...services,
       saveDoc: (next) => storage.saveDoc(next),
       saveAudio: (key, mp3) => storage.saveAudio(key, mp3),
+      // The same steps the admin page shows, in the workflow log too.
+      onEvent: (event) => console.log(`Step: ${JSON.stringify(event)}`),
     });
     const lastSentence = ready.sentences[ready.sentences.length - 1];
     const report = [

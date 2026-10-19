@@ -22,7 +22,7 @@ Budget: free if possible, at most 2–3 € a month.
 
 - **Netlify:** site pages, admin login (Netlify Identity, invite-only, through the official `@netlify/identity` library), storage (Netlify Blobs: texts, translations, timings, mp3), API functions in TypeScript.
 - **GitHub Actions:** processing of each text. Kokoro voices it with word timings, OpenRouter translates it. The result is written to Netlify Blobs.
-- **OpenRouter:** translation with free models. Main: `nvidia/nemotron-3-super-120b-a12b:free`, fallback: `google/gemma-4-31b-it:free` (from another company, so one outage does not stop both).
+- **OpenRouter:** translation with free models: `nvidia/nemotron-3-super-120b-a12b:free` (default), `google/gemma-4-31b-it:free` (another company, so one outage does not stop both), `nvidia/nemotron-3-ultra-550b-a55b:free`.
 
 The path of one text:
 
@@ -46,6 +46,7 @@ type TextDoc = {
   tts: { provider: string; voice: string };
   translation: { provider: string; model: string };
   audio: string;                 // mp3 key in storage; empty until ready
+  log?: ProcessEvent[];          // steps of the last run (models tried, failures, times), for the admin page
   sentences: {                   // empty until ready
     text: string; translation: string;
     paragraph: number;           // paragraph number, from 0
@@ -81,9 +82,15 @@ interface Translator {
 }
 ```
 
-OpenRouter adapter: one request per text (the whole text plus numbered sentences), JSON answer. Check: exactly one non-empty translation per sentence. On failure: retry, then the fallback model.
+OpenRouter adapter: one request per text (the whole text plus numbered sentences), JSON answer. Check: exactly one non-empty translation per sentence. The chosen model goes first, then the other models in list order:
 
-Models were chosen by the [WMT24++ translation ranking](https://llm-stats.com/benchmarks/wmt24++) (checked 2026-10-13): Nemotron 3 Super is first among all listed models. The ranking covers 55 languages, not English to Russian alone; no ranking of free models for English to Russian was found.
+- a broken answer, a timeout or a server error: one more try with the same model (on 2026-10-19 a second try after a timeout worked);
+- a rate limit (429) or another refusal: the next model at once, since these do not pass in seconds;
+- one answer may take up to 5 minutes (a busy free model needed 4.5 minutes for 2,500 characters), the whole translation up to 15.
+
+Each request carries the text id as `session_id`, so OpenRouter's logs group the requests of one text. Every attempt and failure is written to the text's `log` as it happens, and the admin page shows it.
+
+Models were chosen by the [WMT24++ translation ranking](https://llm-stats.com/benchmarks/wmt24++) (checked 2026-10-19): Nemotron 3 Super is first, Nemotron 3 Ultra sixth; no other ranked model is free on OpenRouter. Gemma 4 is not ranked (Gemma 3 27B is 15th); it stays because it runs at another company. Gemma comes before Ultra in the list, so that when NVIDIA is slow, Gemma still gets its turn within the time limit. The ranking covers 55 languages, not English to Russian alone; no ranking of free models for English to Russian was found.
 
 ### Settings (GitHub Actions variables)
 
@@ -170,7 +177,7 @@ Two pull requests: 3a processing by id, 3b admin.
 **3a. Processing by id**
 
 - The workflow takes a text id; the text, title and voice are read from storage. The voice adapter is chosen by the voice's provider.
-- Limits: a run stops after 15 minutes (the processing step after 12). If a run fails or is cancelled, a last step sets status `error` so a text never stays `processing`.
+- Limits: a run stops after 22 minutes (the processing step after 18; the translation alone after 15). If a run fails or is cancelled, a last step sets status `error` so a text never stays `processing`.
 - Shared rules for a new text (`shared/new-text.ts`): title up to 200 characters, text up to 5,000 characters (real texts are about 500–2,500), a voice from the list, ids of `a-z0-9-` only.
 
 **3b. Admin**
@@ -179,10 +186,10 @@ Two pull requests: 3a processing by id, 3b admin.
 - Admin pages, each with its own address and one task; a top menu "Тексты · Новый текст · На сайт · Выйти":
   - `/admin`: the list of texts, newest first, with search by title, "Показать ещё", and "Показывать по 10 / 20 / 50" (remembered in the browser, 10 by default); each row opens the text's page;
   - `/admin/new` and `/admin/texts/<id>/edit`: the "Title, Text, Voice, Translation" form (voice and model from the allowed lists; the last chosen ones are preselected), with a character counter; a new text, voice or model is processed again;
-  - `/admin/texts/<id>`: status (and the error), details, and the actions that make sense now: open on the site, edit, retry, delete; it refreshes itself while the text is processed;
+  - `/admin/texts/<id>`: status (and the error), details, the actions that make sense now (open on the site, edit, retry, delete), and "Ход обработки": every step of the last run with its time; it refreshes itself while the text is processed;
   - `/admin/login` (comes back to the page that was asked for; only admin pages are allowed as the way back), `/admin/forgot` (reset email; the same answer for any address), `/admin/password` (from the invite or reset link, or to change the password when logged in).
 - Creating a text: checks the login, saves the text with status `processing`, starts the workflow through the GitHub API (the call to GitHub lives in one file).
-- A "Retry" button for status `error`, and for a text still `processing` after 20 minutes.
+- A "Retry" button for status `error`, and for a text still `processing` after 25 minutes.
 - Delete: removes the JSON and the mp3; confirmation in the admin page.
 - Edit: a new title is saved at once; a changed text or voice is saved and processed again.
 - The invite and reset links from the emails open the home page; the home page passes them on to `/admin/password`.
@@ -204,6 +211,6 @@ Deferred: a separate "dictionary" voice for single words (a new `TtsProvider` me
 
 - **Netlify:** accounts created after 2025-09-04 use credits: 300 free credits a month, a hard limit; a production deploy costs 15 credits, bandwidth 20 credits per GB, requests 2 per 10,000. When credits run out, sites pause until next month. Branch previews are free. Accounts created earlier stay on the legacy free plan; check which plan the account is on and do not switch to credits without a reason. This project's account is on the legacy free plan (100 GB bandwidth and 300 build minutes a month, hard limits), so credits do not apply.
 - **Netlify Identity:** announced as deprecated in February 2025; the deprecation was reversed in February 2026, and it is supported (docs updated 2026-03-30). Invite-only registration and unlimited users on all plans; on free plans the email templates cannot be customized. No two-factor login. Git Gateway is deprecated (not needed here).
-- **OpenRouter:** free models allow 20 requests a minute and 50 a day (1,000 a day after buying $10+ of credits). Each free model has a single host, with no fallback inside OpenRouter. Some free hosts may keep or train on prompts; texts here are not private.
+- **OpenRouter:** free models allow 20 requests a minute and 50 a day (1,000 a day after buying $10+ of credits). Each free model has a single host, with no fallback inside OpenRouter. Some free hosts may keep or train on prompts; texts here are not private. A busy free host answers 429 "temporarily rate-limited upstream" to everyone; that is not this account's limit.
 - **GitHub Actions:** standard runners are free for public repositories.
 - **Kokoro-82M:** Apache 2.0 weights; word timings for English voices only. The model downloads from Hugging Face.

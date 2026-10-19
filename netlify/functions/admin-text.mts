@@ -62,6 +62,8 @@ export default async (request: Request, context: Context): Promise<Response> => 
   }
   const waiting: TextDoc = { ...edited, source, status: 'processing', updatedAt: now, audio: '', sentences: [] };
   delete waiting.error;
+  // The old log describes the previous run; the new run starts its own.
+  delete waiting.log;
   const failure = await saveAndProcess(waiting);
   if (failure) return Response.json({ error: failure }, { status: 502 });
   return Response.json(waiting);

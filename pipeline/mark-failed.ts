@@ -19,11 +19,13 @@ async function main(): Promise<void> {
   const storage = netlifyStorage(siteID, token);
   const doc = await storage.getDoc(id);
   if (!doc || doc.status !== 'processing') return;
+  const at = new Date().toISOString();
   await storage.saveDoc({
     ...doc,
     status: 'error',
     error: 'The processing run on GitHub stopped before finishing (cancelled or out of time).',
-    updatedAt: new Date().toISOString(),
+    updatedAt: at,
+    log: [...(doc.log ?? []), { type: 'stopped', at }],
   });
   console.log(`Text ${id} marked as failed.`);
 }

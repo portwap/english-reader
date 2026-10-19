@@ -14,11 +14,13 @@ export interface TranslationModelOption {
 /**
  * Every allowed model. The chosen one is tried first; if it fails, the others of the same provider follow
  * in this order, so a text is not left without a translation when one free model is down.
- * Chosen by the WMT24++ translation ranking (see docs/PLAN.md).
+ * Chosen by the WMT24++ translation ranking (see docs/PLAN.md). Gemma comes before Nemotron 3 Ultra although
+ * it ranks lower: Ultra runs at NVIDIA like Nemotron 3 Super, so when NVIDIA is slow, Gemma still gets its turn.
  */
 export const TRANSLATION_MODELS: readonly TranslationModelOption[] = [
   { provider: 'openrouter', id: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'NVIDIA Nemotron 3 Super' },
   { provider: 'openrouter', id: 'google/gemma-4-31b-it:free', label: 'Google Gemma 4 31B' },
+  { provider: 'openrouter', id: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'NVIDIA Nemotron 3 Ultra' },
 ];
 
 /**

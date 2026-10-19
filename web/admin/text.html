@@ -24,7 +24,7 @@
         <h1 id="title"></h1>
         <p><span id="status" class="badge"></span></p>
         <p id="error" class="error-box" hidden></p>
-        <p id="processing" class="status" hidden>Обработка займёт 2–3 минуты, страница обновится сама.</p>
+        <p id="processing" class="status" hidden></p>
         <dl id="details" class="details"></dl>
         <div class="actions">
           <a id="open" class="button-link" hidden>Открыть на сайте</a>
@@ -33,6 +33,10 @@
           <button id="delete" type="button" class="danger" hidden>Удалить</button>
         </div>
         <p id="message" class="message" role="alert"></p>
+        <section id="log-section" class="process-log" hidden>
+          <h2>Ход обработки</h2>
+          <ol id="log"></ol>
+        </section>
       </section>
     </main>
     <script type="module" src="/src/admin/text.ts"></script>

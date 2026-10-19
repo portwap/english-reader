@@ -85,7 +85,7 @@ jobs:
 
       - name: Dry run on the sample text
         if: github.event_name == 'pull_request'
-        run: node pipeline/process.ts --dry-run out/dry-run --title "Long" --text-file pipeline/samples/long-dialogue.txt
+        run: node pipeline/process.ts --dry-run out/dry-run --title "Sample" --text-file pipeline/samples/sample.txt
 
       - name: Upload the dry run result
         if: github.event_name == 'pull_request' && always()

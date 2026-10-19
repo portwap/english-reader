@@ -158,7 +158,7 @@ Everything except the admin. A new text is added by starting a workflow by hand.
 **2a. Processing**
 
 - Data contract in `shared/`.
-- Sentence and word splitting with `Intl.Segmenter`; matching Kokoro words to text words (punctuation, numbers, apostrophes).
+- Sentence and word splitting with `Intl.Segmenter`; a piece that starts with a small letter (a speech tag such as "said Tom." after a quoted question) stays with the sentence before it; matching Kokoro words to text words (punctuation, numbers, apostrophes).
 - OpenRouter adapter with answer checks and a fallback model.
 - Contract tests for both adapters.
 - Workflow `process-text`: takes a title and a text, voices and translates it, writes JSON and mp3 with a status to Netlify Blobs. On failure: status `error` with a clear message. Package and model cache. On pull requests it does a dry run on the sample text and uploads the result instead of writing to storage.

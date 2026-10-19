@@ -125,14 +125,28 @@ form.addEventListener('submit', (event) => {
   });
 });
 
+/**
+ * Removes empty lines from the text field as soon as they appear, however the text got there: pasted from the
+ * menu, inserted by the phone keyboard's clipboard button, or typed with Enter twice. The field then shows the
+ * text as it will be stored. The cursor keeps its place in the text.
+ */
+function dropEmptyLinesInField(): void {
+  const value = textInput.value;
+  const tidy = dropEmptyLines(value);
+  if (tidy === value) return;
+  const cursor = dropEmptyLines(value.slice(0, textInput.selectionEnd)).length;
+  textInput.value = tidy;
+  textInput.setSelectionRange(cursor, cursor);
+}
+
 textInput.addEventListener('input', (event) => {
-  // A pasted text loses its empty lines at once, so the field shows the text as it will be stored.
-  // The cursor stays right after the pasted part.
-  if ((event as InputEvent).inputType === 'insertFromPaste') {
-    const cursor = dropEmptyLines(textInput.value.slice(0, textInput.selectionEnd)).length;
-    textInput.value = dropEmptyLines(textInput.value);
-    textInput.setSelectionRange(cursor, cursor);
-  }
+  // While a phone keyboard is still composing a word, changing the field would break its input; the text is
+  // tidied when the composition ends.
+  if (!(event as InputEvent).isComposing) dropEmptyLinesInField();
+  updateCounter();
+});
+textInput.addEventListener('compositionend', () => {
+  dropEmptyLinesInField();
   updateCounter();
 });
 

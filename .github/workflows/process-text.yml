@@ -23,8 +23,9 @@ permissions:
 jobs:
   process:
     runs-on: ubuntu-24.04
-    # A run takes 2–3 minutes; a stuck run is stopped long before the admin page offers "Retry" (20 minutes).
-    timeout-minutes: 15
+    # A run usually takes 2–3 minutes; the translation alone may take up to 15 when models are slow or down.
+    # A stuck run is stopped before the admin page offers "Retry" (25 minutes).
+    timeout-minutes: 22
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
     steps:
@@ -66,7 +67,7 @@ jobs:
       # The step's own time limit makes it fail (not cancel), so the next step still runs.
       - name: Process the text
         if: github.event_name == 'workflow_dispatch'
-        timeout-minutes: 12
+        timeout-minutes: 18
         env:
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

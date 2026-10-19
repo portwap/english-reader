@@ -93,6 +93,7 @@ function textsOf(data: unknown): TextSummary[] | null {
 /**
  * Changes the index safely: reads it, applies the change, and writes it only if nobody wrote in between;
  * otherwise reads it again and repeats. A missing index is first built from the texts themselves.
+ * Nothing is written if the change leaves the index as it was (for example, a run saving its progress).
  * @param store The index store.
  * @param change Turns the current summaries into the new ones.
  * @param rebuild Reads all summaries, for a missing index.
@@ -107,6 +108,7 @@ export async function updateIndex(
     const current = await store.getWithMetadata(INDEX_KEY, { type: 'json' });
     const texts = (current && textsOf(current.data)) ?? newestFirst(await rebuild());
     const next: TextIndex = { version: 1, texts: newestFirst(change(texts)) };
+    if (current && JSON.stringify(next.texts) === JSON.stringify(texts)) return;
     // Write only over the exact version that was read; a new index only if none appeared meanwhile.
     const condition: WriteCondition = current?.etag ? { onlyIfMatch: current.etag } : { onlyIfNew: true };
     if ((await store.setJSON(INDEX_KEY, next, condition)).modified) return;

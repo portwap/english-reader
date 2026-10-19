@@ -12,6 +12,7 @@ import {
 
 const nemotron = 'nvidia/nemotron-3-super-120b-a12b:free';
 const gemma = 'google/gemma-4-31b-it:free';
+const ultra = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 
 describe('translation models', () => {
   it('names a model together with its provider and finds it by that key', () => {
@@ -27,13 +28,14 @@ describe('translation models', () => {
   });
 
   it('tries the chosen model first, then the others as fallbacks', () => {
-    expect(modelsToTry('openrouter', gemma)).toEqual([gemma, nemotron]);
-    expect(modelsToTry('openrouter', nemotron)).toEqual([nemotron, gemma]);
+    expect(modelsToTry('openrouter', gemma)).toEqual([gemma, nemotron, ultra]);
+    expect(modelsToTry('openrouter', ultra)).toEqual([ultra, nemotron, gemma]);
+    expect(modelsToTry('openrouter', nemotron)).toEqual([nemotron, gemma, ultra]);
   });
 
   it('falls back to the list order for an unknown or missing choice, and to nothing for an unknown provider', () => {
-    expect(modelsToTry('openrouter', 'gone/model')).toEqual([nemotron, gemma]);
-    expect(modelsToTry('openrouter', undefined)).toEqual([nemotron, gemma]);
+    expect(modelsToTry('openrouter', 'gone/model')).toEqual([nemotron, gemma, ultra]);
+    expect(modelsToTry('openrouter', undefined)).toEqual([nemotron, gemma, ultra]);
     expect(modelsToTry('other', gemma)).toEqual([]);
   });
 

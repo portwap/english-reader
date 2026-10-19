@@ -14,8 +14,11 @@ export const MAX_TITLE_LENGTH = 200;
 /** Shape of a text id: lowercase ASCII letters, digits and dashes. Anything else is refused before it reaches storage. */
 export const ID_PATTERN = /^[a-z0-9-]{1,64}$/;
 
-/** A run takes 2–3 minutes and is stopped after 15; a text still "processing" after this long is stuck. */
-export const STUCK_AFTER_MS = 20 * 60 * 1000;
+/**
+ * A run usually takes 2–3 minutes; a slow translation can take up to 15, and the run is stopped after 22.
+ * A text still "processing" after this long is stuck.
+ */
+export const STUCK_AFTER_MS = 25 * 60 * 1000;
 
 /**
  * Tells whether a text may be edited, retried or deleted now. While a run is working on a text, changes wait:

@@ -70,7 +70,16 @@ describe('updateIndex', () => {
     const store = new FakeStore();
     store.value = { version: 1, texts: [] };
     store.afterRead = () => void store.version++;
-    await expect(updateIndex(store, (list) => list, async () => [])).rejects.toThrow(/kept changing/);
+    await expect(updateIndex(store, (list) => upsertSummary(list, text('a', 1)), async () => [])).rejects.toThrow(
+      /kept changing/,
+    );
+  });
+
+  it('writes nothing when the change leaves the index as it was', async () => {
+    const store = new FakeStore();
+    store.value = { version: 1, texts: [text('a', 1)] };
+    await updateIndex(store, (list) => upsertSummary(list, text('a', 1)), async () => []);
+    expect(store.version).toBe(0);
   });
 });
 

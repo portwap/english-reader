@@ -467,3 +467,34 @@ button.link {
 .admin-bar a {
   text-decoration: none;
 }
+
+/* Admin: the steps of a text's last run. */
+.process-log h2 {
+  font-size: 1rem;
+  margin: 24px 0 8px;
+}
+
+.process-log ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.process-log li {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  gap: 8px;
+}
+
+.log-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.log-detail {
+  color: var(--muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}

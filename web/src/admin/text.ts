@@ -1,4 +1,4 @@
-// Admin page of one text: status, details and actions (open, edit, retry, delete).
+// Admin page of one text: status, details, actions (open, edit, retry, delete) and the log of its last run.
 // While the text is being processed, the page refreshes itself until the status changes.
 
 import { canChange } from '../../../shared/new-text.ts';
@@ -6,6 +6,7 @@ import type { TextDoc } from '../../../shared/text-doc.ts';
 import { translationModelLabel } from '../../../shared/translation-models.ts';
 import { textPageUrl } from '../api.ts';
 import { adminTextUrl, api, busy, element, formatDate, problemOf, requireLogin, setupMenu, showContent, statusLabel } from './common.ts';
+import { logLines } from './process-log.ts';
 
 const content = element<HTMLElement>('#content');
 const title = element<HTMLHeadingElement>('#title');
@@ -18,6 +19,8 @@ const edit = element<HTMLAnchorElement>('#edit');
 const retry = element<HTMLButtonElement>('#retry');
 const remove = element<HTMLButtonElement>('#delete');
 const message = element<HTMLParagraphElement>('#message');
+const logSection = element<HTMLElement>('#log-section');
+const logList = element<HTMLOListElement>('#log');
 
 /** How often the page checks a text that is being processed. */
 const REFRESH_MS = 5_000;
@@ -37,6 +40,39 @@ function detail(term: string, value: string): void {
   const dd = document.createElement('dd');
   dd.textContent = value;
   details.append(dt, dd);
+}
+
+/**
+ * Shows the steps of the last run, one per line, with the technical detail of a failure under it.
+ * @param text The text; old texts have no log.
+ */
+function renderLog(text: TextDoc): void {
+  const lines = logLines(text.log ?? []);
+  // The admin started a run, but GitHub has not started the pipeline yet (that takes about a minute and a half).
+  if (text.status === 'processing' && lines.length === 0) {
+    lines.push({ time: '', text: 'Ждём запуска обработки на GitHub…', detail: '' });
+  }
+  logSection.hidden = lines.length === 0;
+  logList.replaceChildren(
+    ...lines.map((line) => {
+      const item = document.createElement('li');
+      const time = document.createElement('span');
+      time.className = 'log-time';
+      time.textContent = line.time;
+      const body = document.createElement('div');
+      const label = document.createElement('div');
+      label.textContent = line.text;
+      body.append(label);
+      if (line.detail) {
+        const technical = document.createElement('div');
+        technical.className = 'log-detail';
+        technical.textContent = line.detail;
+        body.append(technical);
+      }
+      item.append(time, body);
+      return item;
+    }),
+  );
 }
 
 /** Shows the text's status, details and the actions that make sense for it now. */
@@ -61,8 +97,12 @@ function render(text: TextDoc): void {
   if (text.status === 'ready') detail('Предложений', String(text.sentences.length));
 
   const changeable = canChange(text);
-  // While a run works on the text there is nothing to do but wait, so the page says how long.
+  // While a run works on the text there is nothing to do but wait, so the page says how long it has been.
   processingNote.hidden = changeable;
+  const minutes = Math.floor((Date.now() - Date.parse(text.updatedAt ?? text.createdAt)) / 60_000);
+  const elapsed = minutes < 1 ? 'Идёт меньше минуты' : `Идёт ${minutes} мин`;
+  processingNote.textContent = `${elapsed}. Обычно 2–3 минуты; страница обновляется сама.`;
+  renderLog(text);
   open.hidden = text.status !== 'ready';
   open.href = textPageUrl(text.id);
   edit.hidden = !changeable;

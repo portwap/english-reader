@@ -14,7 +14,9 @@ The architecture, the data contract and the stages are in [docs/PLAN.md](docs/PL
 
 1. The admin logs in at `/admin/login` and adds a text at `/admin/new`: a title, a text (up to 5,000 characters), a voice and a translation model. The voices and models to choose from are listed in `shared/voices.ts` and `shared/translation-models.ts`.
 2. A Netlify function saves the text in Netlify Blobs with status `processing` and starts the `process-text` workflow on GitHub Actions with the text id.
-3. The workflow voices the text with Kokoro, translates it with OpenRouter, and saves the result (JSON and mp3) with status `ready`, or status `error` with the reason. The text's admin page (`/admin/texts/<id>`) shows the status as it changes.
+3. The workflow voices the text with Kokoro, translates it with OpenRouter, and saves the result (JSON and mp3) with status `ready`, or status `error` with the reason. The text's admin page (`/admin/texts/<id>`) shows the status and every step of the run as it happens: which model is asked, why an attempt failed, what comes next.
+
+If the chosen model fails, the others from `shared/translation-models.ts` follow. A broken answer, a timeout (5 minutes) or a server error gets one more try with the same model; a rate limit (429) or a refusal moves to the next model at once. The whole translation may take up to 15 minutes.
 
 Lists of texts (the home page and `/admin`) are read from one stored index of all texts, which every writer updates safely.
 
@@ -44,11 +46,13 @@ Each outside service is behind one file:
 |---|---|---|
 | Voice (Kokoro) | `pipeline/tts/` | Write an adapter that implements `TtsProvider`, add it to `pipeline/tts/providers.ts`, add its voices to `shared/voices.ts`. Old texts keep their voice. |
 | Translation (OpenRouter) | `pipeline/translate/` | Write an adapter that implements `Translator`, add it to `pipeline/translate/translators.ts`, add its models to `shared/translation-models.ts`. |
-| Login (Netlify Identity) | `netlify/lib/auth.ts` (server), `web/src/admin.ts` (login form) | Change these two files. |
+| Login (Netlify Identity) | `netlify/lib/auth.ts` (server); `web/src/admin/common.ts`, `login.ts`, `forgot.ts`, `password.ts` (pages) | Change these files. |
 | Starting a run (GitHub Actions) | `netlify/lib/trigger.ts` | Change this file. |
 | Storage (Netlify Blobs) | `shared/storage.ts`, `shared/text-index.ts`, `pipeline/store.ts`, `netlify/lib/texts.ts`, the read functions in `netlify/functions/` | Change the store access in these files; the data format stays. |
 
 Every adapter must pass the contract tests in `pipeline/tests/`.
+
+To add a translation model of the same service, add it to `shared/translation-models.ts`. To see how it translates before merging, add `--model openrouter:<model id>` to the dry run step in `.github/workflows/process-text.yml` in the pull request, read the `dry-run` artifact, then take the option out again.
 
 ## Development
 

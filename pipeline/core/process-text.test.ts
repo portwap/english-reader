@@ -58,7 +58,9 @@ describe('processText', () => {
     const { all, saved, audio } = deps();
     const { doc } = await processText(waiting, all);
 
-    expect(saved.map((d) => d.status)).toEqual(['processing', 'ready']);
+    expect(saved[0]?.status).toBe('processing');
+    expect(saved.at(-1)?.status).toBe('ready');
+    expect(saved.slice(1, -1).every((d) => d.status === 'processing')).toBe(true);
     expect(audio).toEqual(['anna-1.mp3']);
     expect(doc).toMatchObject({
       id: 'anna-1',
@@ -103,11 +105,69 @@ describe('processText', () => {
     const failing: Translator = { id: 'x', translate: async () => Promise.reject(new Error('model is down')) };
     const { all, saved, audio } = deps({ translator: failing });
     await expect(processText(waiting, all)).rejects.toThrow('model is down');
-    expect(saved.map((d) => [d.status, d.error])).toEqual([
-      ['processing', undefined],
-      ['error', 'model is down'],
-    ]);
+    expect([saved[0]?.status, saved[0]?.error]).toEqual(['processing', undefined]);
+    expect([saved.at(-1)?.status, saved.at(-1)?.error]).toEqual(['error', 'model is down']);
+    expect(saved.at(-1)?.log?.map((e) => e.type)).toContain('error');
     expect(audio).toEqual([]);
+  });
+
+  it('logs each step with its time and saves it as it happens', async () => {
+    const reporting: Translator = {
+      id: 'fake-tr',
+      async translate(fullText, sentences, options) {
+        options?.onEvent?.({ type: 'attempt', model: 'm1', attempt: 1 });
+        options?.onEvent?.({
+          type: 'failed',
+          model: 'm1',
+          attempt: 1,
+          seconds: 2,
+          reason: 'rate-limited',
+          status: 429,
+          then: 'next-model',
+          detail: 'busy',
+        });
+        options?.onEvent?.({ type: 'attempt', model: 'm2', attempt: 1 });
+        expect(options?.sessionId).toBe('anna-1');
+        return fakeTranslator.translate(fullText, sentences);
+      },
+    };
+    const printed: string[] = [];
+    const { all, saved } = deps({ translator: reporting, onEvent: (event) => void printed.push(event.type) });
+    const { doc } = await processText(waiting, all);
+    const types = doc.log?.map((e) => e.type) ?? [];
+    expect(types[0]).toBe('started');
+    expect(types.at(-1)).toBe('ready');
+    expect(types.filter((t) => t === 'attempt' || t === 'failed')).toEqual(['attempt', 'failed', 'attempt']);
+    expect(types).toContain('voiced');
+    expect(types).toContain('translated');
+    expect(doc.log?.every((e) => e.at === '2026-10-14T09:00:00.000Z')).toBe(true);
+    expect(printed).toEqual(types);
+    // Every step was saved while processing, each save with a longer log than the one before.
+    const lengths = saved.map((d) => d.log?.length ?? 0);
+    expect(lengths).toEqual([...lengths].sort((a, b) => a - b));
+    expect(new Set(lengths).size).toBe(lengths.length);
+  });
+
+  it('saves nothing after the end, even if the translation reports a step later', async () => {
+    let lateReport = () => {};
+    const slow: Translator = {
+      id: 'fake-tr',
+      translate: (_fullText, _sentences, options) =>
+        new Promise((resolve) => {
+          lateReport = () => {
+            options?.onEvent?.({ type: 'attempt', model: 'm2', attempt: 1 });
+            resolve({ translations: [], model: 'm2' });
+          };
+        }),
+    };
+    const broken: TtsProvider = { ...fakeTts, synthesize: async () => Promise.reject(new Error('voice is down')) };
+    const { all, saved } = deps({ tts: broken, translator: slow });
+    await expect(processText(waiting, all)).rejects.toThrow('voice is down');
+    const count = saved.length;
+    lateReport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(saved).toHaveLength(count);
+    expect(saved.at(-1)?.status).toBe('error');
   });
 
   it('refuses a voice adapter that does not match the voice of the text', async () => {

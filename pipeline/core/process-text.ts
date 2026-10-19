@@ -2,7 +2,7 @@
 // Services come in as arguments, so tests can run the whole flow with fakes.
 
 import { audioKey } from '../../shared/storage.ts';
-import type { TextDoc } from '../../shared/text-doc.ts';
+import type { ProcessEvent, ProcessStep, TextDoc } from '../../shared/text-doc.ts';
 import type { TtsProvider } from '../tts/provider.ts';
 import type { Translator } from '../translate/translator.ts';
 import { alignWords } from './align.ts';
@@ -15,10 +15,12 @@ export interface ProcessDeps {
   /** The voice adapter for the document's tts.provider. */
   tts: TtsProvider;
   translator: Translator;
-  /** Called with the document each time its status changes (processing, then ready or error). */
+  /** Called with the document when its status changes (processing, then ready or error) and after each logged step. */
   saveDoc: (doc: TextDoc) => Promise<void>;
   /** Called once with the finished mp3, before the ready document is saved. */
   saveAudio: (key: string, mp3: Buffer) => Promise<void>;
+  /** Called with each logged step as it happens, for example to print it. */
+  onEvent?: (event: ProcessEvent) => void;
   /** Replaceable for tests. */
   now?: () => Date;
 }
@@ -56,6 +58,8 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
   if (deps.tts.id !== input.tts.provider) {
     throw new Error(`Voice adapter "${deps.tts.id}" was given for a "${input.tts.provider}" voice.`);
   }
+  const startedEvent: ProcessEvent = { type: 'started', at: now() };
+  const log: ProcessEvent[] = [startedEvent];
   const doc: TextDoc = {
     ...input,
     status: 'processing',
@@ -64,9 +68,37 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
     translation: { ...input.translation, provider: deps.translator.id, model: '' },
     audio: '',
     sentences: [],
+    log,
   };
   delete doc.error;
+  deps.onEvent?.(startedEvent);
   await deps.saveDoc(doc);
+
+  // Each step is saved as it happens, so the admin page can show the run. Saves go one after another, so they
+  // arrive in order; a failed progress save is only reported, because the final save still carries the whole log.
+  let finished = false;
+  let saving = Promise.resolve();
+  const note = (step: ProcessStep) => {
+    // After the end, a step still coming in (the translation goes on after the voice failed) must not be saved.
+    if (finished) return;
+    const event = { ...step, at: now() } as ProcessEvent;
+    log.push(event);
+    deps.onEvent?.(event);
+    const snapshot: TextDoc = { ...doc, log: [...log] };
+    saving = saving.then(() =>
+      deps.saveDoc(snapshot).catch((error: unknown) => console.warn('Could not save the progress:', error)),
+    );
+  };
+  /** Stops logging and waits for the progress saves, so the final save is the last one. */
+  const finish = async (last: ProcessStep) => {
+    finished = true;
+    await saving;
+    const event = { ...last, at: now() } as ProcessEvent;
+    log.push(event);
+    deps.onEvent?.(event);
+    return [...log];
+  };
+  const seconds = (value: number) => Math.round(value * 10) / 10;
 
   try {
     if (!doc.source) throw new Error('The text is empty.');
@@ -74,8 +106,16 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
     const sentenceTexts = sentences.map((sentence) => sentence.text);
     // Voicing uses the CPU and translation waits on the network, so they run side by side.
     const [voiced, translated] = await Promise.all([
-      timed(deps.tts.synthesize(doc.source, doc.tts.voice)),
-      timed(deps.translator.translate(doc.source, sentenceTexts)),
+      timed(deps.tts.synthesize(doc.source, doc.tts.voice)).then((result) => {
+        note({ type: 'voiced', seconds: seconds(result.seconds) });
+        return result;
+      }),
+      timed(
+        deps.translator.translate(doc.source, sentenceTexts, { sessionId: doc.id, onEvent: (step) => note(step) }),
+      ).then((result) => {
+        note({ type: 'translated', model: result.value.model, seconds: seconds(result.seconds) });
+        return result;
+      }),
     ]);
 
     const timingProblems = checkTimings(voiced.value.words, voiced.value.duration);
@@ -84,6 +124,8 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
     if (translationProblems.length > 0) throw new Error(`Bad translation: ${translationProblems.join('; ')}`);
 
     const words = alignWords(doc.source, voiced.value.words);
+    // Audio goes first, so a ready document never points to missing audio.
+    await deps.saveAudio(audioKey(doc.id), voiced.value.mp3);
     const ready: TextDoc = {
       ...doc,
       status: 'ready',
@@ -91,9 +133,8 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
       translation: { ...doc.translation, model: translated.value.model },
       audio: audioKey(doc.id),
       sentences: assembleSentences(sentences, words, translated.value.translations),
+      log: await finish({ type: 'ready' }),
     };
-    // Audio goes first, so a ready document never points to missing audio.
-    await deps.saveAudio(ready.audio, voiced.value.mp3);
     await deps.saveDoc(ready);
     return {
       doc: ready,
@@ -106,7 +147,7 @@ export async function processText(input: TextDoc, deps: ProcessDeps): Promise<Pr
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await deps.saveDoc({ ...doc, status: 'error', error: message, updatedAt: now() });
+    await deps.saveDoc({ ...doc, status: 'error', error: message, updatedAt: now(), log: await finish({ type: 'error' }) });
     throw error;
   }
 }

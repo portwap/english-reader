@@ -17,8 +17,15 @@ export { normalizeSource } from '../../shared/new-text.ts';
 const sentenceSegmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
 
 /**
+ * A piece that goes on the sentence before it: its first letter is small, as in a speech tag after a quoted
+ * question or exclamation ("Why?" asked Tom.), which the segmenter cuts off as a sentence of its own.
+ * A piece starting with a digit is not joined: "3 people came." is a sentence.
+ */
+const CONTINUATION = /^[\p{P}\s]*\p{Ll}/u;
+
+/**
  * Splits a normalized text into sentences. Each line is a paragraph, like Kokoro reads it;
- * empty lines only separate paragraphs.
+ * empty lines only separate paragraphs. A speech tag stays with its quote: “Why?” asked Tom. is one sentence.
  * @param text Text from normalizeSource.
  * @returns Sentences in order, with paragraph numbers and positions.
  */
@@ -28,11 +35,20 @@ export function splitSentences(text: string): SourceSentence[] {
   let lineStart = 0;
   for (const line of text.split('\n')) {
     if (line.trim()) {
+      const firstInLine = sentences.length;
       for (const segment of sentenceSegmenter.segment(line)) {
         const trimmed = segment.segment.trim();
         if (!trimmed) continue;
         const from = lineStart + segment.index + segment.segment.indexOf(trimmed);
-        sentences.push({ text: trimmed, paragraph, from, to: from + trimmed.length });
+        const to = from + trimmed.length;
+        // Only a sentence of the same paragraph can be continued.
+        const previous = sentences.length > firstInLine ? sentences[sentences.length - 1] : undefined;
+        if (previous && CONTINUATION.test(trimmed)) {
+          previous.text = text.slice(previous.from, to);
+          previous.to = to;
+        } else {
+          sentences.push({ text: trimmed, paragraph, from, to });
+        }
       }
       paragraph++;
     }
